@@ -398,12 +398,27 @@ async function loadMonthlyStats() {
   }
   
   try {
+    // 并行请求每月的公司和个人数据
     const results = await Promise.all(
-      months.map(m => 
-        api.getSummary({ startDate: m.start, endDate: m.end, seller: currentSeller })
-          .then(res => ({ ...m, data: res.data || res }))
-          .catch(() => ({ ...m, data: null }))
-      )
+      months.map(async (m) => {
+        try {
+          const [companyRes, personalRes] = await Promise.all([
+            api.getSummary({ startDate: m.start, endDate: m.end, seller: 'company' }),
+            api.getSummary({ startDate: m.start, endDate: m.end, seller: 'personal' }),
+          ]);
+          const company = companyRes.data || companyRes;
+          const personal = personalRes.data || personalRes;
+          return {
+            ...m,
+            companyProfit: company.totalProfit || 0,
+            personalProfit: personal.totalProfit || 0,
+            companyCount: company.transactionCount || 0,
+            personalCount: personal.transactionCount || 0,
+          };
+        } catch {
+          return { ...m, companyProfit: 0, personalProfit: 0, companyCount: 0, personalCount: 0 };
+        }
+      })
     );
     renderMonthlyStats(results.reverse()); // 最新月份在上
   } catch (e) {
@@ -418,26 +433,28 @@ function renderMonthlyStats(months) {
   }
   
   el.monthlyList.innerHTML = months.map(m => {
-    if (!m.data || m.data.transactionCount === 0) return '';
-    const s = m.data;
+    const totalProfit = m.companyProfit + m.personalProfit;
+    const totalCount = m.companyCount + m.personalCount;
+    if (totalCount === 0) return ''; // 跳过没有交易的月份
+    
     return `
       <div class="monthly-card" data-year="${m.year}" data-month="${m.month}">
         <div class="monthly-card__header">
           <div class="monthly-card__month">${m.year}年${parseInt(m.month)}月</div>
-          <div class="monthly-card__count">${s.transactionCount} 笔</div>
+          <div class="monthly-card__count">${totalCount} 笔</div>
         </div>
         <div class="monthly-card__stats">
           <div class="monthly-card__stat">
-            <div class="monthly-card__stat-label">收入</div>
-            <div class="monthly-card__stat-value">${formatCurrency(s.totalRevenue)}</div>
+            <div class="monthly-card__stat-label">公司收入</div>
+            <div class="monthly-card__stat-value">${formatCurrency(m.companyProfit)}</div>
           </div>
           <div class="monthly-card__stat">
-            <div class="monthly-card__stat-label">成本</div>
-            <div class="monthly-card__stat-value">${formatCurrency(s.totalCost)}</div>
+            <div class="monthly-card__stat-label">个人收入</div>
+            <div class="monthly-card__stat-value">${formatCurrency(m.personalProfit)}</div>
           </div>
           <div class="monthly-card__stat monthly-card__stat--profit">
-            <div class="monthly-card__stat-label">利润</div>
-            <div class="monthly-card__stat-value">${formatCurrency(s.totalProfit)}</div>
+            <div class="monthly-card__stat-label">总收入</div>
+            <div class="monthly-card__stat-value">${formatCurrency(totalProfit)}</div>
           </div>
         </div>
       </div>
