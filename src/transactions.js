@@ -7,6 +7,22 @@ export async function handleTransactions(request, env) {
   if (request.method === 'POST') return createTransaction(request, env);
 }
 
+// 货源 / 品牌名 的去重建议列表（用于下拉框）
+export async function handleOptions(env) {
+  const sourceRow = await env.DB
+    .prepare(`SELECT DISTINCT source FROM transactions WHERE source != '' ORDER BY source`)
+    .all();
+  const brandRow = await env.DB
+    .prepare(`SELECT DISTINCT brand FROM transactions WHERE brand != '' ORDER BY brand`)
+    .all();
+  return Response.json({
+    data: {
+      sources: sourceRow.results.map(r => r.source),
+      brands: brandRow.results.map(r => r.brand),
+    },
+  });
+}
+
 async function listTransactions(request, env) {
   const url = new URL(request.url);
   const params = url.searchParams;
@@ -44,7 +60,7 @@ async function listTransactions(request, env) {
 
   const rows = await env.DB
     .prepare(`
-      SELECT id, seller, date, product, channel, cost, price, commission_rate, profit, account, note, created_at, updated_at
+      SELECT id, seller, source, brand, date, product, channel, cost, price, commission_rate, profit, account, note, created_at, updated_at
       FROM transactions
       ${whereSql}
       ORDER BY ${sortColumn} ${sortOrder}, id DESC
@@ -72,11 +88,13 @@ async function createTransaction(request, env) {
 
   const result = await env.DB
     .prepare(`
-      INSERT INTO transactions (seller, date, product, channel, cost, price, commission_rate, profit, account, note)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO transactions (seller, source, brand, date, product, channel, cost, price, commission_rate, profit, account, note)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
     .bind(
       body.seller || 'company',
+      body.source || '',
+      body.brand || '',
       body.date,
       body.product,
       body.channel,
@@ -114,12 +132,14 @@ export async function handleTransactionItem(request, env, id) {
     // 合并时统一处理，确保 UPDATE 拿到正确的值
     const merged = {
       seller: body.seller ?? existing.seller,
+      source: body.source ?? existing.source ?? '',
+      brand: body.brand ?? existing.brand ?? '',
       date: body.date ?? existing.date,
       product: body.product ?? existing.product,
       channel: body.channel ?? existing.channel,
       cost: body.cost ?? existing.cost,
       price: body.price ?? existing.price,
-      commission_rate: body.commission_rate ?? existing.commissionRate ?? existing.commission_rate ?? 0,
+      commission_rate: body.commission_rate ?? existing.commissionRate ?? 0,
       profit: body.profit ?? existing.profit,
       account: body.account ?? existing.account ?? '',
       note: body.note ?? existing.note,
@@ -128,11 +148,11 @@ export async function handleTransactionItem(request, env, id) {
     await env.DB
       .prepare(`
         UPDATE transactions
-        SET seller=?, date=?, product=?, channel=?, cost=?, price=?, commission_rate=?, profit=?, account=?, note=?, updated_at=datetime('now')
+        SET seller=?, source=?, brand=?, date=?, product=?, channel=?, cost=?, price=?, commission_rate=?, profit=?, account=?, note=?, updated_at=datetime('now')
         WHERE id = ?
       `)
       .bind(
-        merged.seller, merged.date, merged.product, merged.channel,
+        merged.seller, merged.source || '', merged.brand || '', merged.date, merged.product, merged.channel,
         merged.cost || 0, merged.price || 0,
         merged.commission_rate, merged.profit, merged.account || '', merged.note || '', id
       )
@@ -159,6 +179,8 @@ function formatTransaction(row) {
   return {
     id: row.id,
     seller: row.seller,
+    source: row.source || '',
+    brand: row.brand || '',
     date: row.date,
     product: row.product,
     channel: row.channel,

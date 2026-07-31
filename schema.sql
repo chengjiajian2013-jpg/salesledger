@@ -6,6 +6,8 @@ DROP TABLE IF EXISTS transactions;
 CREATE TABLE transactions (
   id              INTEGER PRIMARY KEY AUTOINCREMENT,
   seller          TEXT    NOT NULL DEFAULT 'company',           -- company | personal
+  source          TEXT    NOT NULL DEFAULT '',                   -- 货源（公司固定苏苏，个人可填）
+  brand           TEXT    NOT NULL DEFAULT '',                   -- 品牌名（可选）
   date            TEXT    NOT NULL,                             -- 'YYYY-MM-DD'
   product         TEXT    NOT NULL,
   channel         TEXT    NOT NULL DEFAULT 'other',             -- quota | direct | recovery | other

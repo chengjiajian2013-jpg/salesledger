@@ -15,6 +15,20 @@ export function validateTransaction(input, { partial = false } = {}) {
     }
   }
 
+  // source（可选，货源）
+  if (v.source !== undefined && v.source !== null) {
+    if (String(v.source).length > 50) {
+      errors.push({ field: 'source', code: 'LENGTH_OUT_OF_RANGE', message: '货源不能超过 50 字符' });
+    }
+  }
+
+  // brand（可选，品牌名）
+  if (v.brand !== undefined && v.brand !== null) {
+    if (String(v.brand).length > 50) {
+      errors.push({ field: 'brand', code: 'LENGTH_OUT_OF_RANGE', message: '品牌名不能超过 50 字符' });
+    }
+  }
+
   // date
   if (!partial || v.date !== undefined) {
     if (!v.date) errors.push({ field: 'date', code: 'REQUIRED', message: '日期不能为空' });

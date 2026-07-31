@@ -24,6 +24,7 @@
   --shadow-lg: 0 12px 40px rgba(28,26,23,0.10), 0 2px 8px rgba(28,26,23,0.04);
   --radius-sm: 10px; --radius-md: 14px; --radius-lg: 20px; --radius-xl: 28px;
   --font-serif: 'Georgia', 'Songti SC', serif;
+  --font-numeric: -apple-system, 'SF Pro Text', 'SF Pro Display', 'PingFang SC', ui-sans-serif, sans-serif;
   --font-sans: -apple-system, 'SF Pro Text', 'PingFang SC', sans-serif;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -93,6 +94,19 @@ body {
 }
 .seller-tab--active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
 
+/* ═══ VIEW TABS (交易明细 / 月度统计) ═══ */
+.view-tabs {
+  display: flex; background: var(--surface-2);
+  border-radius: var(--radius-md); padding: 3px; margin-bottom: 14px;
+}
+.view-tab {
+  flex: 1; height: 38px; border: none; border-radius: calc(var(--radius-md) - 2px);
+  font-family: inherit; font-size: 0.85rem; font-weight: 600;
+  cursor: pointer; background: transparent; color: var(--text-3);
+  transition: all var(--transition);
+}
+.view-tab--active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
+
 /* ═══ CONTENT ═══ */
 .content {
   flex: 1; overflow-y: auto; overflow-x: hidden;
@@ -103,21 +117,23 @@ body {
 
 /* ═══ STATS ═══ */
 .stats-grid {
-  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 18px;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 18px;
 }
+.stats-grid--2 { grid-template-columns: repeat(2, 1fr); }
 .stat-card {
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius-md); padding: 16px 12px; text-align: center;
   position: relative; transition: box-shadow var(--transition);
 }
 .stat-card__label { font-size: 0.62rem; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; font-weight: 600; }
-.stat-card__value { font-family: var(--font-serif); font-size: 1.1rem; font-weight: 600; letter-spacing: -0.01em; }
+.stat-card__value { font-family: var(--font-numeric); font-size: 1.1rem; font-weight: 600; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
 .stat-card--profit { border-top: 3px solid var(--gold); }
 .stat-card--profit .stat-card__value { color: var(--success); font-size: 1.45rem; }
 .stat-card--profit .stat-card__label { color: var(--gold-text); }
+.stat-card--base .stat-card__value { color: var(--text-2); }
 
 /* ═══ FILTER ═══ */
-.filter-bar { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+.filter-bar { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
 .filter-bar input, .filter-bar select {
   height: 38px; border: 1px solid var(--border); border-radius: var(--radius-sm);
   padding: 0 12px; font-family: inherit; font-size: 0.82rem;
@@ -125,8 +141,19 @@ body {
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 .filter-bar input:focus, .filter-bar select:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(184,134,11,0.10); }
-.filter-bar input[type="date"] { flex: 1; min-width: 120px; }
+.filter-bar input[type="month"] { flex: 1; min-width: 140px; font-family: var(--font-numeric); }
 .filter-bar select { flex: 1; min-width: 100px; }
+.month-nav {
+  display: flex; gap: 6px;
+}
+.month-nav__btn {
+  width: 38px; height: 38px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); background: var(--surface); color: var(--text);
+  font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s;
+}
+.month-nav__btn:hover { border-color: var(--gold); background: var(--gold-soft); color: var(--gold-text); }
+.month-nav__btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
 /* ═══ SECTION ═══ */
 .section__header { display: flex; align-items: center; justify-content: space-between; margin: 18px 0 12px; }
@@ -142,9 +169,10 @@ body {
 }
 .txn-item:active { transform: scale(0.985); box-shadow: var(--shadow-sm); }
 .txn-item__info { flex: 1; min-width: 0; }
-.txn-item__title { font-size: 0.88rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; }
+.txn-item__title { font-size: 0.88rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.txn-item__brand { font-size: 0.68rem; font-weight: 600; color: var(--gold-text); background: var(--gold-soft); padding: 2px 7px; border-radius: 8px; white-space: nowrap; }
 .txn-item__meta { font-size: 0.7rem; color: var(--text-3); margin-top: 3px; line-height: 1.4; }
-.txn-item__amount { font-family: var(--font-serif); font-size: 1.05rem; font-weight: 600; color: var(--success); white-space: nowrap; }
+.txn-item__amount { font-family: var(--font-numeric); font-size: 1.05rem; font-weight: 600; color: var(--success); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .txn-item__delete {
   width: 28px; height: 28px; border-radius: 50%; border: none;
   background: var(--surface-2); color: var(--text-3); cursor: pointer;
@@ -212,7 +240,13 @@ body {
   outline: none; transition: border-color 0.2s, box-shadow 0.2s;
 }
 .form-field__input:focus, .form-field__select:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(184,134,11,0.10); background: var(--surface); }
-.form-field__input--number { text-align: right; font-family: var(--font-serif); font-weight: 600; }
+.form-field__input--locked { background: var(--surface-2); color: var(--text-2); cursor: default; }
+.form-field__input--locked:focus { border-color: var(--border); box-shadow: none; background: var(--surface-2); }
+.form-field__input--number { text-align: right; font-family: var(--font-numeric); font-weight: 600; font-variant-numeric: tabular-nums; }
+/* 隐藏原生数字输入微调器，用自定义步进按钮 */
+.form-field__input--number::-webkit-outer-spin-button,
+.form-field__input--number::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.form-field__input--number { -moz-appearance: textfield; }
 .form-field__error { font-size: 0.7rem; color: var(--danger); margin-top: 4px; }
 .form-field__hint { font-size: 0.7rem; color: var(--text-3); margin-top: 4px; }
 .form-row { display: flex; gap: 10px; }
@@ -228,13 +262,78 @@ body {
 }
 .channel-tab--active { border-color: var(--gold); background: var(--gold-soft); color: var(--gold-text); }
 
-/* Rate input with suffix */
-.input-with-suffix { position: relative; display: flex; align-items: center; }
-.input-with-suffix .form-field__input { padding-right: 40px; }
-.input-with-suffix__suffix {
-  position: absolute; right: 12px; font-family: var(--font-serif);
-  font-size: 0.9rem; color: var(--text-3); pointer-events: none;
+/* ═══ 智能解析入口 ═══ */
+.parse-bar { margin-bottom: 16px; }
+.parse-bar__label {
+  font-size: 0.65rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--gold-text); margin-bottom: 6px; display: block;
 }
+.parse-bar__input {
+  width: 100%; min-height: 64px; border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm); padding: 10px 12px; font-family: inherit;
+  font-size: 0.85rem; background: var(--surface-2); color: var(--text);
+  outline: none; resize: vertical; line-height: 1.5;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.parse-bar__input:focus { border-color: var(--gold); border-style: solid; box-shadow: 0 0 0 3px rgba(184,134,11,0.10); background: var(--surface); }
+.parse-bar__actions { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+.parse-btn {
+  height: 36px; padding: 0 16px; border: 1px solid var(--gold);
+  border-radius: var(--radius-sm); background: var(--gold-soft); color: var(--gold-text);
+  font-family: inherit; font-size: 0.82rem; font-weight: 600; cursor: pointer;
+  transition: all 0.2s; display: flex; align-items: center; gap: 6px;
+}
+.parse-btn:hover { background: var(--gold); color: #fff; }
+.parse-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.parse-btn__spinner {
+  width: 14px; height: 14px; border: 2px solid currentColor;
+  border-top-color: transparent; border-radius: 50%;
+  animation: parseSpin 0.7s linear infinite; display: none;
+}
+.parse-btn--loading .parse-btn__spinner { display: block; }
+@keyframes parseSpin { to { transform: rotate(360deg); } }
+.parse-bar__hint { font-size: 0.68rem; color: var(--text-3); }
+.parse-bar__warning {
+  margin-top: 8px; padding: 8px 12px; border-radius: var(--radius-sm);
+  background: var(--gold-soft); color: var(--gold-text);
+  font-size: 0.75rem; font-weight: 500; display: none;
+}
+.parse-bar__warning--visible { display: block; }
+.parse-bar__toggle {
+  width: 100%; height: 38px; border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm); background: var(--surface-2); color: var(--gold-text);
+  font-family: inherit; font-size: 0.82rem; font-weight: 600; cursor: pointer;
+  transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.parse-bar__toggle:hover { border-color: var(--gold); background: var(--gold-soft); }
+.parse-bar__body { margin-top: 10px; animation: parseBodyIn 0.2s var(--ease); }
+@keyframes parseBodyIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+.parse-bar__clear {
+  margin-left: auto; height: 36px; padding: 0 12px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); background: transparent; color: var(--text-3);
+  font-family: inherit; font-size: 0.78rem; cursor: pointer; transition: all 0.2s;
+}
+.parse-bar__clear:hover { border-color: var(--text-3); color: var(--text); }
+
+/* Rate stepper: − 输入 + 三格一体 */
+.rate-stepper { display: flex; align-items: center; gap: 8px; }
+.rate-stepper .input-with-suffix { flex: 1; min-width: 0; position: relative; display: flex; align-items: center; }
+.rate-stepper .input-with-suffix .form-field__input { padding-right: 28px; }
+.input-with-suffix__suffix {
+  position: absolute; right: 10px; font-family: var(--font-numeric);
+  font-size: 0.85rem; color: var(--text-3); pointer-events: none; font-weight: 600;
+}
+.rate-stepper__btn {
+  width: 42px; height: 42px; flex: none;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface-2); color: var(--text);
+  font-size: 1.25rem; font-weight: 500; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  line-height: 1; padding: 0;
+  transition: border-color 0.15s, color 0.15s, background 0.15s, transform 0.1s;
+}
+.rate-stepper__btn:hover { border-color: var(--gold); color: var(--gold-text); background: var(--gold-soft); }
+.rate-stepper__btn:active { transform: scale(0.93); }
 
 /* Profit preview */
 .profit-preview {
@@ -244,8 +343,9 @@ body {
 }
 .profit-preview__label { font-size: 0.65rem; color: var(--success); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
 .profit-preview__value {
-  font-family: var(--font-serif); font-size: 2.2rem; font-weight: 600;
+  font-family: var(--font-numeric); font-size: 2.2rem; font-weight: 600;
   color: var(--success); line-height: 1.15; margin-top: 4px; letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
 }
 .profit-preview__formula { font-size: 0.72rem; color: var(--text-3); margin-top: 6px; }
 
@@ -287,6 +387,40 @@ body {
 
 @keyframes listIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
+/* ═══ MONTHLY STATS ═══ */
+.monthly-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: 16px; margin-bottom: 10px;
+  transition: transform 0.15s var(--ease), box-shadow 0.2s var(--ease);
+  animation: listIn 0.3s var(--ease) both; cursor: pointer;
+}
+.monthly-card:active { transform: scale(0.985); box-shadow: var(--shadow-sm); }
+.monthly-card__header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px;
+}
+.monthly-card__month {
+  font-family: var(--font-serif); font-size: 1.05rem; font-weight: 600;
+}
+.monthly-card__count {
+  font-size: 0.72rem; color: var(--text-3);
+}
+.monthly-card__stats {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+}
+.monthly-card__stat {
+  text-align: center;
+}
+.monthly-card__stat-label {
+  font-size: 0.62rem; color: var(--text-3); text-transform: uppercase;
+  letter-spacing: 0.06em; margin-bottom: 4px;
+}
+.monthly-card__stat-value {
+  font-family: var(--font-numeric); font-size: 0.95rem; font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.monthly-card__stat--profit .monthly-card__stat-value { color: var(--success); }
+
 @media (min-width: 431px) {
   .app { border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
 }
@@ -305,49 +439,57 @@ body {
       <button class="seller-tab seller-tab--active" data-seller="company">公司</button>
       <button class="seller-tab" data-seller="personal">个人</button>
     </div>
+    <div class="view-tabs" id="viewTabs">
+      <button class="view-tab view-tab--active" data-view="transactions">交易明细</button>
+      <button class="view-tab" data-view="monthly">月度统计</button>
+    </div>
   </header>
 
   <!-- ═══ CONTENT ═══ -->
   <main class="content" id="content">
 
-    <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-card__label">总收入</div>
-        <div class="stat-card__value" id="statRevenue">¥0.00</div>
+    <div class="stats-grid" id="statsGrid"></div>
+
+    <!-- 交易明细视图 -->
+    <div id="transactionsView">
+      <div class="section">
+        <div class="section__header">
+          <div class="section__title">交易明细</div>
+          <span id="recordCount" style="font-size:0.7rem;color:var(--text-3);">0 笔</span>
+        </div>
+        <div class="filter-bar">
+          <div class="month-nav">
+            <button class="month-nav__btn" id="prevMonth" title="上月">‹</button>
+            <button class="month-nav__btn" id="nextMonth" title="下月">›</button>
+          </div>
+          <input type="month" id="filterMonth">
+          <select id="filterChannel">
+            <option value="">全部渠道</option>
+            <option value="quota">额度</option>
+            <option value="direct">直款</option>
+            <option value="recovery">回收</option>
+            <option value="other">其他</option>
+          </select>
+        </div>
       </div>
-      <div class="stat-card">
-        <div class="stat-card__label">总成本</div>
-        <div class="stat-card__value" id="statCost">¥0.00</div>
-      </div>
-      <div class="stat-card stat-card--profit">
-        <div class="stat-card__label">净利润</div>
-        <div class="stat-card__value" id="statProfit">¥0.00</div>
+
+      <div id="txnList"></div>
+      <div class="pagination" id="pagination" style="display:none;">
+        <button id="prevPage">上一页</button>
+        <span class="pagination__info" id="pageInfo">1 / 1</span>
+        <button id="nextPage">下一页</button>
       </div>
     </div>
 
-    <div class="section">
-      <div class="section__header">
-        <div class="section__title">交易明细</div>
-        <span id="recordCount" style="font-size:0.7rem;color:var(--text-3);">0 笔</span>
+    <!-- 月度统计视图 -->
+    <div id="monthlyView" style="display:none;">
+      <div class="section">
+        <div class="section__header">
+          <div class="section__title">月度统计</div>
+          <select id="yearFilter" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:0.8rem;background:var(--surface);color:var(--text);"></select>
+        </div>
       </div>
-      <div class="filter-bar">
-        <input type="date" id="filterStart">
-        <input type="date" id="filterEnd">
-        <select id="filterChannel">
-          <option value="">全部渠道</option>
-          <option value="quota">额度</option>
-          <option value="direct">直款</option>
-          <option value="recovery">回收</option>
-          <option value="other">其他</option>
-        </select>
-      </div>
-    </div>
-
-    <div id="txnList"></div>
-    <div class="pagination" id="pagination" style="display:none;">
-      <button id="prevPage">上一页</button>
-      <span class="pagination__info" id="pageInfo">1 / 1</span>
-      <button id="nextPage">下一页</button>
+      <div id="monthlyList"></div>
     </div>
 
   </main>
@@ -361,6 +503,37 @@ body {
       <div class="modal__handle"></div>
       <div class="modal__title" id="modalTitle">记一笔</div>
       <form id="txnForm" novalidate>
+
+        <!-- 智能解析入口（默认折叠，点击展开） -->
+        <div class="parse-bar">
+          <button type="button" class="parse-bar__toggle" id="parseToggle">✨ 智能解析</button>
+          <div class="parse-bar__body" id="parseBody" style="display:none;">
+            <label class="parse-bar__label">粘贴或语音描述</label>
+            <textarea class="parse-bar__input" id="parseInput" placeholder="例：苏苏的 Chanel CF 中号，额度，售价 35000，我抽 1 个点&#10;（iOS 键盘可点麦克风语音输入）"></textarea>
+            <div class="parse-bar__actions">
+              <button type="button" class="parse-btn" id="parseBtn"><span class="parse-btn__spinner"></span><span class="parse-btn__text">解析</span></button>
+              <span class="parse-bar__hint">自动提取商品、渠道、金额</span>
+              <button type="button" class="parse-bar__clear" id="parseClear">清空</button>
+            </div>
+            <div class="parse-bar__warning" id="parseWarning">⚠️ 解析可信度较低，请仔细核对金额和渠道后再保存</div>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-field" id="sourceField">
+            <label class="form-field__label">货源</label>
+            <input type="text" class="form-field__input" id="inputSource" list="datalistSource" placeholder="苏苏" autocomplete="off">
+            <datalist id="datalistSource"></datalist>
+            <div class="form-field__error" id="errorSource"></div>
+          </div>
+          <div class="form-field" id="brandField">
+            <label class="form-field__label">品牌名 <span style="font-weight:400;color:var(--text-3);">(可选)</span></label>
+            <input type="text" class="form-field__input" id="inputBrand" list="datalistBrand" placeholder="例：Chanel" autocomplete="off">
+            <datalist id="datalistBrand"></datalist>
+            <div class="form-field__error" id="errorBrand"></div>
+          </div>
+        </div>
+
         <div class="form-field">
           <label class="form-field__label">日期</label>
           <input type="date" class="form-field__input" id="inputDate" required>
@@ -386,11 +559,11 @@ body {
 
         <div class="form-row">
           <div class="form-field">
-            <label class="form-field__label">成本 (¥) <span style="color:var(--text-3);font-weight:400;">可选</span></label>
+            <label class="form-field__label">成本 (¥) <span id="costRequired" style="color:var(--text-3);font-weight:400;">可选</span></label>
             <input type="number" class="form-field__input form-field__input--number" id="inputCost" placeholder="0.00" step="0.01" min="0" inputmode="decimal">
           </div>
           <div class="form-field">
-            <label class="form-field__label">售价 (¥) <span style="color:var(--text-3);font-weight:400;">可选</span></label>
+            <label class="form-field__label">售价 (¥) <span id="priceRequired" style="color:var(--text-3);font-weight:400;">可选</span></label>
             <input type="number" class="form-field__input form-field__input--number" id="inputPrice" placeholder="0.00" step="0.01" min="0" inputmode="decimal">
           </div>
         </div>
@@ -398,9 +571,13 @@ body {
         <!-- 佣金比例（其他渠道隐藏） -->
         <div class="form-field" id="rateField">
           <label class="form-field__label">佣金比例</label>
-          <div class="input-with-suffix">
-            <input type="number" class="form-field__input form-field__input--number" id="inputRate" placeholder="2.0" step="0.1" min="0" max="100" inputmode="decimal">
-            <span class="input-with-suffix__suffix">%</span>
+          <div class="rate-stepper">
+            <button type="button" class="rate-stepper__btn" id="rateMinus" aria-label="减少">−</button>
+            <div class="input-with-suffix">
+              <input type="number" class="form-field__input form-field__input--number" id="inputRate" placeholder="2.0" step="0.1" min="0" max="100" inputmode="decimal">
+              <span class="input-with-suffix__suffix">%</span>
+            </div>
+            <button type="button" class="rate-stepper__btn" id="ratePlus" aria-label="增加">+</button>
           </div>
           <div class="form-field__hint" id="rateHint">默认 2%，可调整</div>
         </div>

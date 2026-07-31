@@ -1,8 +1,9 @@
 // SalesLedger — Cloudflare Workers 入口
 // 路由分发 + 错误处理 + 自动建表 + 静态资源
 
-import { handleTransactions, handleTransactionItem } from './transactions.js';
+import { handleTransactions, handleTransactionItem, handleOptions } from './transactions.js';
 import { handleSummary } from './summary.js';
+import { handleParse } from './parse.js';
 import { SCHEMA_STATEMENTS } from './schema.js';
 
 // 单例：确保只初始化一次
@@ -16,7 +17,7 @@ function ensureSchema(env) {
         } catch (err) {
           // 迁移类语句（如 ADD COLUMN）若已执行过会报 "duplicate column" 等错误，忽略即可
           const msg = String(err?.message || err);
-          const ignorable = /duplicate column|already exists|duplicate column name/i.test(msg);
+          const ignorable = /duplicate column|already exists|duplicate column name|no such column/i.test(msg);
           if (!ignorable) throw err;
           console.warn('[Schema Init] skip (already applied):', stmt.slice(0, 60), '->', msg.slice(0, 80));
         }
@@ -79,6 +80,10 @@ export default {
           response = await handleTransactionItem(request, env, id);
         } else if (path === '/api/v1/summary' && method === 'GET') {
           response = await handleSummary(request, env);
+        } else if (path === '/api/v1/options' && method === 'GET') {
+          response = await handleOptions(env);
+        } else if (path === '/api/v1/parse' && method === 'POST') {
+          response = await handleParse(request, env);
         } else {
           response = jsonError('RESOURCE_NOT_FOUND', '接口不存在: ' + path, 404);
         }

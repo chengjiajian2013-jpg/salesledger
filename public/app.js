@@ -9,18 +9,31 @@ import { formatCurrency, formatDate, todayStr, escapeHtml } from './modules/form
 const $ = (s) => document.querySelector(s);
 const el = {
   headerSubtitle: $('#headerSubtitle'),
-  statRevenue: $('#statRevenue'), statCost: $('#statCost'), statProfit: $('#statProfit'),
+  statsGrid: $('#statsGrid'),
   sellerTabs: $('#sellerTabs'),
-  filterStart: $('#filterStart'), filterEnd: $('#filterEnd'), filterChannel: $('#filterChannel'),
+  viewTabs: $('#viewTabs'),
+  transactionsView: $('#transactionsView'),
+  monthlyView: $('#monthlyView'),
+  filterMonth: $('#filterMonth'),
+  prevMonth: $('#prevMonth'),
+  nextMonth: $('#nextMonth'),
+  filterChannel: $('#filterChannel'),
   recordCount: $('#recordCount'),
   txnList: $('#txnList'),
   pagination: $('#pagination'), prevPage: $('#prevPage'), nextPage: $('#nextPage'), pageInfo: $('#pageInfo'),
+  yearFilter: $('#yearFilter'),
+  monthlyList: $('#monthlyList'),
   fab: $('#fab'),
   modalOverlay: $('#modalOverlay'), modalTitle: $('#modalTitle'),
   txnForm: $('#txnForm'),
   inputDate: $('#inputDate'), inputProduct: $('#inputProduct'),
   inputCost: $('#inputCost'), inputPrice: $('#inputPrice'),
+  costRequired: $('#costRequired'), priceRequired: $('#priceRequired'),
   inputRate: $('#inputRate'), rateField: $('#rateField'), rateHint: $('#rateHint'),
+  rateMinus: $('#rateMinus'), ratePlus: $('#ratePlus'),
+  inputSource: $('#inputSource'), sourceField: $('#sourceField'),
+  inputBrand: $('#inputBrand'), brandField: $('#brandField'),
+  datalistSource: $('#datalistSource'), datalistBrand: $('#datalistBrand'),
   profitPreview: $('#profitPreview'), profitValue: $('#profitValue'), profitFormula: $('#profitFormula'),
   manualProfitField: $('#manualProfitField'), inputProfit: $('#inputProfit'),
   accountField: $('#accountField'), inputAccount: $('#inputAccount'), accountHint: $('#accountHint'),
@@ -28,10 +41,16 @@ const el = {
   channelTabs: $('#channelTabs'),
   submitBtn: $('#submitBtn'),
   toastContainer: $('#toastContainer'),
+  // 智能解析
+  parseToggle: $('#parseToggle'), parseBody: $('#parseBody'),
+  parseInput: $('#parseInput'), parseBtn: $('#parseBtn'), parseClear: $('#parseClear'),
+  parseWarning: $('#parseWarning'),
 };
 
 let currentSeller = 'company';
 let selectedChannel = 'quota';
+let editingId = null;  // 编辑模式追踪：null=创建，数字=编辑
+let currentView = 'transactions';  // transactions | monthly
 
 // ═══ Toast ═══
 function showToast(msg, type = 'info') {
@@ -71,6 +90,14 @@ function updateProfitPreview() {
   el.profitFormula.textContent = formulas[channel] || '';
 }
 
+// ═══ 佣金比例步进器 ═══
+function adjustRate(delta) {
+  const current = parseFloat(el.inputRate.value) || 0;
+  const next = Math.min(100, Math.max(0, Math.round((current + delta) * 10) / 10));
+  el.inputRate.value = next.toFixed(1).replace(/\.0$/, '');
+  updateProfitPreview();
+}
+
 // ═══ 渠道切换 ═══
 function selectChannel(channel) {
   selectedChannel = channel;
@@ -81,46 +108,145 @@ function selectChannel(channel) {
   const defaults = COMMISSION_DEFAULTS[currentSeller][channel];
   el.inputRate.value = (defaults.defaultRate * 100).toFixed(1).replace(/\.0$/, '');
   el.rateHint.textContent = channel === 'other' ? '其他渠道直接填写利润' : `默认 ${formatRate(defaults.defaultRate)}，可调整`;
+  updateFieldRules(channel);
   updateProfitPreview();
 }
 
+// 成本/售价必填规则随渠道切换
+function updateFieldRules(channel) {
+  const priceReq = channel !== 'other';            // 额度/直款/回收 售价必填
+  const costReq  = channel === 'direct' || channel === 'recovery'; // 仅直款/回收 成本必填
+  el.priceRequired.textContent = priceReq ? '必填' : '可选';
+  el.priceRequired.style.color = priceReq ? 'var(--danger)' : 'var(--text-3)';
+  el.inputPrice.required = priceReq;
+  el.costRequired.textContent  = costReq ? '必填' : '可选';
+  el.costRequired.style.color  = costReq ? 'var(--danger)' : 'var(--text-3)';
+  el.inputCost.required = costReq;
+}
+
 // ═══ Seller 切换 ═══
-function selectSeller(seller) {
+function selectSeller(seller, skipRefresh = false) {
   currentSeller = seller;
   el.sellerTabs.querySelectorAll('.seller-tab').forEach(btn => {
     btn.classList.toggle('seller-tab--active', btn.dataset.seller === seller);
   });
   // 仅公司交易显示款项去向
   el.accountField.style.display = seller === 'company' ? 'block' : 'none';
-  setState({ filters: { seller, page: 1 } });
+
+  syncSourceField(seller);
+
+  if (!skipRefresh) {
+    setState({ filters: { seller, page: 1 } });
+    refreshAll();
+  }
+}
+
+// ═══ 视图切换 ═══
+function switchView(view) {
+  currentView = view;
+  el.viewTabs.querySelectorAll('.view-tab').forEach(btn => {
+    btn.classList.toggle('view-tab--active', btn.dataset.view === view);
+  });
+  
+  if (view === 'transactions') {
+    el.transactionsView.style.display = 'block';
+    el.monthlyView.style.display = 'none';
+    refreshAll();
+  } else {
+    el.transactionsView.style.display = 'none';
+    el.monthlyView.style.display = 'block';
+    loadMonthlyStats();
+  }
+}
+
+// ═══ 月份导航 ═══
+function getMonthFromFilter() {
+  return el.filterMonth.value || getCurrentMonth();
+}
+
+function getCurrentMonth() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function setMonth(yearMonth) {
+  el.filterMonth.value = yearMonth;
+  const [year, month] = yearMonth.split('-').map(Number);
+  const start = `${year}-${String(month).padStart(2, '0')}-01`;
+  const lastDay = new Date(year, month, 0).getDate();
+  const end = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+  setState({ filters: { startDate: start, endDate: end, page: 1 } });
   refreshAll();
+}
+
+function adjustMonth(delta) {
+  const current = getMonthFromFilter();
+  const [year, month] = current.split('-').map(Number);
+  const d = new Date(year, month - 1 + delta, 1);
+  const newMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  setMonth(newMonth);
+}
+
+// 货源：公司固定为苏苏（锁定），个人可编辑
+function syncSourceField(seller) {
+  if (seller === 'company') {
+    el.inputSource.value = '苏苏';
+    el.inputSource.readOnly = true;
+    el.inputSource.classList.add('form-field__input--locked');
+  } else {
+    el.inputSource.readOnly = false;
+    el.inputSource.classList.remove('form-field__input--locked');
+  }
+}
+
+// 加载货源/品牌名下拉建议
+async function loadOptions() {
+  try {
+    const res = await api.getOptions();
+    const data = res.data || res;
+    const sources = data.sources || [];
+    const brands = data.brands || [];
+    // 个人模式下建议列表也包含苏苏，方便选择
+    const sourceOptions = currentSeller === 'personal' && !sources.includes('苏苏')
+      ? [...sources, '苏苏']
+      : sources;
+    el.datalistSource.innerHTML = sourceOptions.map(v => `<option value="${escapeHtml(v)}">`).join('');
+    el.datalistBrand.innerHTML = brands.map(v => `<option value="${escapeHtml(v)}">`).join('');
+  } catch (e) {
+    console.warn('[Options]', e);
+  }
 }
 
 // ═══ Modal ═══
 function openCreateModal() {
+  editingId = null;  // 明确是创建模式
   el.modalTitle.textContent = '记一笔 - ' + (currentSeller === 'company' ? '公司' : '个人');
   el.txnForm.reset();
   el.inputDate.value = todayStr();
   el.accountField.style.display = currentSeller === 'company' ? 'block' : 'none';
+  syncSourceField(currentSeller);
   selectChannel('quota');
   clearErrors();
+  resetParse();
+  loadOptions();
   el.modalOverlay.classList.add('modal-overlay--open');
   setTimeout(() => el.inputProduct.focus(), 300);
 }
 
 async function openEditModal(id) {
+  editingId = id;  // 设置为编辑模式
   const txn = state.transactions.find(t => t.id === id);
   if (!txn) return;
   el.modalTitle.textContent = '编辑记录';
   clearErrors();
-  currentSeller = txn.seller;
-  el.sellerTabs.querySelectorAll('.seller-tab').forEach(btn => {
-    btn.classList.toggle('seller-tab--active', btn.dataset.seller === txn.seller);
-  });
+  resetParse();
+  selectSeller(txn.seller, true);  // 切换 seller，但不刷新数据
   el.inputDate.value = txn.date;
   el.inputProduct.value = txn.product;
   el.inputCost.value = txn.cost || '';
   el.inputPrice.value = txn.price || '';
+  el.inputSource.value = txn.source || '';
+  el.inputBrand.value = txn.brand || '';
   el.inputAccount.value = txn.account || '';
   el.inputNote.value = txn.note || '';
   selectChannel(txn.channel);
@@ -129,28 +255,32 @@ async function openEditModal(id) {
     el.inputProfit.value = txn.profit;
   }
   updateProfitPreview();
+  loadOptions();
   el.modalOverlay.classList.add('modal-overlay--open');
 }
 
 // ═══ 复制公司记录为个人记录 ═══
 function openCopyToPersonalModal(id) {
+  editingId = null;  // 复制操作是创建新记录
   const txn = state.transactions.find(t => t.id === id);
   if (!txn) return;
   el.modalTitle.textContent = `复制为个人 · #${txn.id}`;
   clearErrors();
-  currentSeller = 'personal';
-  el.sellerTabs.querySelectorAll('.seller-tab').forEach(btn => {
-    btn.classList.toggle('seller-tab--active', btn.dataset.seller === 'personal');
-  });
+  resetParse();
+  selectSeller('personal', true);  // 切换到个人模式，但不刷新数据
   el.txnForm.reset();
   el.inputDate.value = txn.date;
   el.inputProduct.value = txn.product;
   el.inputCost.value = txn.cost != null ? txn.cost : '';
   el.inputPrice.value = txn.price != null ? txn.price : '';
+  // 复制为个人：货源默认取源记录的货源，可改
+  el.inputSource.value = txn.source || '';
+  el.inputBrand.value = txn.brand || '';
   el.inputAccount.value = txn.account || '';
   el.inputNote.value = `自 #${txn.id} 复制`;
   selectChannel(txn.channel);
   updateProfitPreview();
+  loadOptions();
   el.modalOverlay.classList.add('modal-overlay--open');
   setTimeout(() => el.inputRate.focus(), 300);
 }
@@ -163,6 +293,64 @@ function clearErrors() {
   document.querySelectorAll('.form-field__error').forEach(e => e.textContent = '');
 }
 
+// ═══ 智能解析（DeepSeek） ═══
+function toggleParse(open) {
+  const show = open != null ? open : el.parseBody.style.display === 'none';
+  el.parseBody.style.display = show ? 'block' : 'none';
+}
+
+function resetParse() {
+  el.parseInput.value = '';
+  el.parseWarning.classList.remove('parse-bar__warning--visible');
+  el.parseBody.style.display = 'none';
+}
+
+async function runParse() {
+  const text = el.parseInput.value.trim();
+  if (!text) { showToast('请先粘贴或输入描述', 'error'); return; }
+
+  el.parseBtn.disabled = true;
+  el.parseBtn.classList.add('parse-btn--loading');
+  el.parseWarning.classList.remove('parse-bar__warning--visible');
+  try {
+    const res = await api.parse({ text, seller: currentSeller, today: todayStr() });
+    const d = res.data || res;
+    applyParseResult(d);
+    showToast('解析完成，请核对后保存');
+    toggleParse(false); // 解析成功后收起
+  } catch (err) {
+    showToast(err.message || '解析失败', 'error');
+  } finally {
+    el.parseBtn.disabled = false;
+    el.parseBtn.classList.remove('parse-btn--loading');
+  }
+}
+
+// 把解析草稿填入表单
+function applyParseResult(d) {
+  if (d.date) el.inputDate.value = d.date;
+  if (d.product) el.inputProduct.value = d.product;
+  if (d.source) el.inputSource.value = d.source;
+  if (d.brand) el.inputBrand.value = d.brand;
+  // 渠道切换会重置比例默认值，所以先切渠道
+  selectChannel(d.channel || 'quota');
+  if (d.cost) el.inputCost.value = d.cost;
+  if (d.price) el.inputPrice.value = d.price;
+  // 显式给出的比例覆盖渠道默认值
+  if (d.commissionRate != null && d.commissionRate >= 0) {
+    el.inputRate.value = (d.commissionRate * 100).toFixed(1).replace(/\.0$/, '');
+  }
+  if (d.account) el.inputAccount.value = d.account;
+  if (d.note) el.inputNote.value = d.note;
+  if (d.channel === 'other' && d.profit) el.inputProfit.value = d.profit;
+  updateProfitPreview();
+
+  // 可信度提示
+  if (d.confidence === 'low') {
+    el.parseWarning.classList.add('parse-bar__warning--visible');
+  }
+}
+
 // ═══ 数据加载 ═══
 async function loadSummary() {
   try {
@@ -171,7 +359,10 @@ async function loadSummary() {
     const data = res.data || res;
     setState({ summary: data });
     renderSummary(data);
-  } catch (e) { console.error('[Summary]', e); }
+  } catch (e) {
+    console.error('[Summary]', e);
+    showToast('统计数据加载失败', 'error');
+  }
 }
 
 async function loadTransactions() {
@@ -194,20 +385,115 @@ async function refreshAll() {
   await Promise.all([loadSummary(), loadTransactions()]);
 }
 
+// ═══ 月度统计 ═══
+async function loadMonthlyStats() {
+  const year = el.yearFilter.value || new Date().getFullYear();
+  const months = [];
+  for (let m = 1; m <= 12; m++) {
+    const month = String(m).padStart(2, '0');
+    const start = `${year}-${month}-01`;
+    const lastDay = new Date(year, m, 0).getDate();
+    const end = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
+    months.push({ year, month, start, end });
+  }
+  
+  try {
+    const results = await Promise.all(
+      months.map(m => 
+        api.getSummary({ startDate: m.start, endDate: m.end, seller: currentSeller })
+          .then(res => ({ ...m, data: res.data || res }))
+          .catch(() => ({ ...m, data: null }))
+      )
+    );
+    renderMonthlyStats(results.reverse()); // 最新月份在上
+  } catch (e) {
+    showToast('月度统计加载失败', 'error');
+  }
+}
+
+function renderMonthlyStats(months) {
+  if (!months || months.length === 0) {
+    el.monthlyList.innerHTML = '<div class="empty-state"><div class="empty-state__text">暂无数据</div></div>';
+    return;
+  }
+  
+  el.monthlyList.innerHTML = months.map(m => {
+    if (!m.data || m.data.transactionCount === 0) return '';
+    const s = m.data;
+    return `
+      <div class="monthly-card" data-year="${m.year}" data-month="${m.month}">
+        <div class="monthly-card__header">
+          <div class="monthly-card__month">${m.year}年${parseInt(m.month)}月</div>
+          <div class="monthly-card__count">${s.transactionCount} 笔</div>
+        </div>
+        <div class="monthly-card__stats">
+          <div class="monthly-card__stat">
+            <div class="monthly-card__stat-label">收入</div>
+            <div class="monthly-card__stat-value">${formatCurrency(s.totalRevenue)}</div>
+          </div>
+          <div class="monthly-card__stat">
+            <div class="monthly-card__stat-label">成本</div>
+            <div class="monthly-card__stat-value">${formatCurrency(s.totalCost)}</div>
+          </div>
+          <div class="monthly-card__stat monthly-card__stat--profit">
+            <div class="monthly-card__stat-label">利润</div>
+            <div class="monthly-card__stat-value">${formatCurrency(s.totalProfit)}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  // 点击月度卡片跳转到交易明细
+  el.monthlyList.querySelectorAll('.monthly-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const year = card.dataset.year;
+      const month = card.dataset.month;
+      setMonth(`${year}-${month}`);
+      switchView('transactions');
+    });
+  });
+}
+
 // ═══ 渲染 ═══
 const CHANNEL_LABELS = { quota: '额度', direct: '直款', recovery: '回收', other: '其他' };
 
 function renderSummary(s) {
   if (!s) { el.headerSubtitle.textContent = '暂无数据'; return; }
-  el.statRevenue.textContent = formatCurrency(s.totalRevenue);
-  el.statCost.textContent = formatCurrency(s.totalCost);
-  el.statProfit.textContent = formatCurrency(s.totalProfit);
-  const sellerLabel = state.filters.seller === 'personal' ? '个人' : '公司';
-  el.headerSubtitle.textContent = `${sellerLabel} · ${s.transactionCount} 笔 · 均利 ${formatCurrency(s.averageProfit)}`;
+  const seller = state.filters.seller;
+  const profit = s.totalProfit;
+  const BASE_SALARY = 8000;
+
+  let cards;
+  if (seller === 'company') {
+    cards = [
+      { label: '底薪', value: formatCurrency(BASE_SALARY), cls: 'stat-card--base' },
+      { label: '提成', value: formatCurrency(profit) },
+      { label: '总数', value: formatCurrency(BASE_SALARY + profit), cls: 'stat-card--profit' },
+    ];
+  } else {
+    cards = [
+      { label: '佣金', value: formatCurrency(profit) },
+      { label: '总数', value: formatCurrency(profit), cls: 'stat-card--profit' },
+    ];
+  }
+
+  el.statsGrid.className = 'stats-grid' + (cards.length === 2 ? ' stats-grid--2' : '');
+  el.statsGrid.innerHTML = cards.map(c => `
+    <div class="stat-card ${c.cls || ''}">
+      <div class="stat-card__label">${c.label}</div>
+      <div class="stat-card__value">${c.value}</div>
+    </div>
+  `).join('');
+
+  const sellerLabel = seller === 'personal' ? '个人' : '公司';
+  el.headerSubtitle.textContent = `${sellerLabel} · ${s.transactionCount} 笔`;
+  // 均利显示在交易明细右边
+  el.recordCount.textContent = `${s.transactionCount} 笔 · 均利 ${formatCurrency(s.averageProfit)}`;
 }
 
 function renderList(data, pg) {
-  el.recordCount.textContent = `${pg.totalItems} 笔`;
+  // recordCount 现在在 renderSummary 中设置（包含均利），这里不再覆盖
   if (!data || data.length === 0) {
     el.txnList.innerHTML = `<div class="empty-state"><div class="empty-state__text">暂无记录<br>点击右下角 + 记第一笔</div></div>`;
     el.pagination.style.display = 'none';
@@ -219,9 +505,10 @@ function renderList(data, pg) {
         <div class="txn-item__title">
           <span class="channel-badge channel-badge--${t.channel}">${CHANNEL_LABELS[t.channel] || t.channel}</span>
           ${escapeHtml(t.product)}
+          ${t.brand ? `<span class="txn-item__brand">${escapeHtml(t.brand)}</span>` : ''}
         </div>
         <div class="txn-item__meta">
-          ${formatDate(t.date)} · 佣金 ${(t.commissionRate * 100).toFixed(1).replace(/\.0$/, '')}%
+          ${formatDate(t.date)} · ${t.source ? escapeHtml(t.source) : (t.seller === 'company' ? '苏苏' : '—')} · 佣金 ${(t.commissionRate * 100).toFixed(1).replace(/\.0$/, '')}%
           ${t.cost ? ` · 成本 ${formatCurrency(t.cost)}` : ''}${t.price ? ` · 售价 ${formatCurrency(t.price)}` : ''}
           ${t.account ? ` · 到账: ${escapeHtml(t.account)}` : ''}
         </div>
@@ -277,12 +564,16 @@ async function handleSubmit(e) {
     const price = parseFloat(el.inputPrice.value) || 0;
     const cost = parseFloat(el.inputCost.value) || 0;
     const rate = (parseFloat(el.inputRate.value) || 0) / 100;
+    // 按渠道校验必填
     if (price <= 0) { showToast('请填写售价', 'error'); return; }
+    if ((channel === 'direct' || channel === 'recovery') && cost <= 0) { showToast('请填写成本', 'error'); return; }
     profit = Math.round((price - cost) * rate * 100) / 100;
   }
 
   const body = {
     seller: currentSeller,
+    source: el.inputSource.value.trim(),
+    brand: el.inputBrand.value.trim(),
     date: el.inputDate.value,
     product: el.inputProduct.value.trim(),
     channel,
@@ -298,8 +589,15 @@ async function handleSubmit(e) {
 
   el.submitBtn.disabled = true;
   try {
-    await api.createTransaction(body);
-    showToast('已记录 ✓');
+    if (editingId) {
+      // 编辑模式：更新现有记录
+      await api.updateTransaction(editingId, body);
+      showToast('已更新 ✓');
+    } else {
+      // 创建模式：创建新记录
+      await api.createTransaction(body);
+      showToast('已记录 ✓');
+    }
     closeModal();
     refreshAll();
   } catch (err) {
@@ -320,6 +618,20 @@ function bindEvents() {
     if (btn) selectSeller(btn.dataset.seller);
   });
 
+  // 视图切换
+  el.viewTabs.addEventListener('click', (e) => {
+    const btn = e.target.closest('.view-tab');
+    if (btn) switchView(btn.dataset.view);
+  });
+
+  // 月份导航
+  el.prevMonth.addEventListener('click', () => adjustMonth(-1));
+  el.nextMonth.addEventListener('click', () => adjustMonth(1));
+  el.filterMonth.addEventListener('change', () => setMonth(el.filterMonth.value));
+
+  // 年份筛选
+  el.yearFilter.addEventListener('change', loadMonthlyStats);
+
   el.channelTabs.addEventListener('click', (e) => {
     const btn = e.target.closest('.channel-tab');
     if (btn) selectChannel(btn.dataset.channel);
@@ -330,22 +642,36 @@ function bindEvents() {
   el.inputCost.addEventListener('input', updateProfitPreview);
   el.inputRate.addEventListener('input', updateProfitPreview);
 
+  // 比例步进按钮（步长 0.5%）
+  el.rateMinus.addEventListener('click', () => adjustRate(-0.5));
+  el.ratePlus.addEventListener('click', () => adjustRate(0.5));
+
+  // 智能解析
+  el.parseToggle.addEventListener('click', () => {
+    const willOpen = el.parseBody.style.display === 'none';
+    toggleParse(true);
+    if (willOpen) setTimeout(() => el.parseInput.focus(), 250);
+  });
+  el.parseBtn.addEventListener('click', runParse);
+  el.parseClear.addEventListener('click', resetParse);
+  // 解析框内 Cmd/Ctrl+Enter 快速解析
+  el.parseInput.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') runParse();
+  });
+
   el.txnForm.addEventListener('submit', handleSubmit);
 
-  // 筛选
+  // 筛选（渠道）
   let ft;
   const onFilter = () => {
     clearTimeout(ft);
     ft = setTimeout(() => {
       setState({ filters: {
-        startDate: el.filterStart.value, endDate: el.filterEnd.value,
         channel: el.filterChannel.value, page: 1,
       } });
       refreshAll();
     }, 300);
   };
-  el.filterStart.addEventListener('change', onFilter);
-  el.filterEnd.addEventListener('change', onFilter);
   el.filterChannel.addEventListener('change', onFilter);
 
   el.prevPage.addEventListener('click', () => {
@@ -361,8 +687,15 @@ function bindEvents() {
 
 // ═══ 初始化 ═══
 async function init() {
-  el.filterStart.value = state.filters.startDate;
-  el.filterEnd.value = state.filters.endDate;
+  // 初始化月份选择器为当月
+  el.filterMonth.value = getCurrentMonth();
+  setMonth(getCurrentMonth());
+  
+  // 初始化年份选择器（最近3年）
+  const currentYear = new Date().getFullYear();
+  const years = [currentYear, currentYear - 1, currentYear - 2];
+  el.yearFilter.innerHTML = years.map(y => `<option value="${y}">${y}年</option>`).join('');
+  
   bindEvents();
   await refreshAll();
 }

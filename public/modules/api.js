@@ -34,5 +34,7 @@ export const api = {
   updateTransaction: (id, body) => request(`/transactions/${id}`, { method: 'PATCH', body }),
   deleteTransaction: (id) => request(`/transactions/${id}`, { method: 'DELETE' }),
   getSummary: (params) => request('/summary', { params }),
+  parse: (body) => request('/parse', { method: 'POST', body }),
+  getOptions: () => request('/options'),
   health: () => request('/health'),
 };

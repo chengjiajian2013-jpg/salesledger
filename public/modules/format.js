@@ -11,8 +11,8 @@ export function formatCurrency(value) {
 
 export function formatDate(dateStr) {
   if (!dateStr) return '--';
-  const d = new Date(dateStr + 'T00:00:00');
-  return `${d.getMonth() + 1}月${d.getDate()}日`;
+  const d = new Date(dateStr + 'T00:00:00Z');
+  return `${d.getUTCMonth() + 1}月${d.getUTCDate()}日`;
 }
 
 export function todayStr() {

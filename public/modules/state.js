@@ -33,7 +33,10 @@ function deepMerge(target, source) {
 
 function defaultFilters() {
   const now = new Date();
-  const start = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-  const end = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const start = `${year}-${month}-01`;
+  const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+  const end = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
   return { startDate: start, endDate: end, seller: 'company', channel: '', keyword: '', page: 1, pageSize: 20, sortBy: 'date', sortOrder: 'desc' };
 }
