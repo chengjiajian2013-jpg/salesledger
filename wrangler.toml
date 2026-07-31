@@ -1,0 +1,19 @@
+name = "salesledger"
+main = "src/worker.js"
+compatibility_date = "2025-07-18"
+compatibility_flags = ["nodejs_compat"]
+
+# 静态资源（前端）
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+# D1 数据库绑定
+[[d1_databases]]
+binding = "DB"
+database_name = "salesledger-db"
+database_id = "1a88bdc1-98a3-462f-8f48-8dad0730f6ad"
+
+# 环境变量
+[vars]
+ENV = "development"
