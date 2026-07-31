@@ -2,7 +2,7 @@
 // 与 schema.sql 保持同步
 
 export const SCHEMA_STATEMENTS = [
-  `DROP TABLE IF EXISTS transactions`,
+  // 主表（保留数据，IF NOT EXISTS）
   `CREATE TABLE IF NOT EXISTS transactions (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     seller          TEXT    NOT NULL DEFAULT 'company',
@@ -13,10 +13,13 @@ export const SCHEMA_STATEMENTS = [
     price           REAL    DEFAULT 0,
     commission_rate REAL    NOT NULL DEFAULT 0,
     profit          REAL    NOT NULL,
+    account         TEXT    NOT NULL DEFAULT '',
     note            TEXT    NOT NULL DEFAULT '',
     created_at      TEXT    NOT NULL DEFAULT (datetime('now')),
     updated_at      TEXT    NOT NULL DEFAULT (datetime('now'))
   )`,
+  // 迁移：旧表无 account 列时添加（已存在则忽略）
+  `ALTER TABLE transactions ADD COLUMN account TEXT NOT NULL DEFAULT ''`,
   `CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date)`,
   `CREATE INDEX IF NOT EXISTS idx_transactions_seller ON transactions(seller)`,
   `CREATE INDEX IF NOT EXISTS idx_transactions_channel ON transactions(channel)`,

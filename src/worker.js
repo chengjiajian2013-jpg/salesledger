@@ -11,7 +11,15 @@ function ensureSchema(env) {
   if (!schemaPromise) {
     schemaPromise = (async () => {
       for (const stmt of SCHEMA_STATEMENTS) {
-        await env.DB.prepare(stmt).run();
+        try {
+          await env.DB.prepare(stmt).run();
+        } catch (err) {
+          // 迁移类语句（如 ADD COLUMN）若已执行过会报 "duplicate column" 等错误，忽略即可
+          const msg = String(err?.message || err);
+          const ignorable = /duplicate column|already exists|duplicate column name/i.test(msg);
+          if (!ignorable) throw err;
+          console.warn('[Schema Init] skip (already applied):', stmt.slice(0, 60), '->', msg.slice(0, 80));
+        }
       }
     })().catch(err => {
       schemaPromise = null;

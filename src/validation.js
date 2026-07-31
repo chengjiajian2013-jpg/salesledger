@@ -81,6 +81,13 @@ export function validateTransaction(input, { partial = false } = {}) {
     }
   }
 
+  // account（可选，款项去向说明，公司对账用）
+  if (v.account !== undefined && v.account !== null) {
+    if (String(v.account).length > 500) {
+      errors.push({ field: 'account', code: 'LENGTH_OUT_OF_RANGE', message: '款项去向不能超过 500 字符' });
+    }
+  }
+
   // note
   if (v.note !== undefined && v.note !== null) {
     if (String(v.note).length > 500) {

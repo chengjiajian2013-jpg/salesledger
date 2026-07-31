@@ -44,7 +44,7 @@ async function listTransactions(request, env) {
 
   const rows = await env.DB
     .prepare(`
-      SELECT id, seller, date, product, channel, cost, price, commission_rate, profit, note, created_at, updated_at
+      SELECT id, seller, date, product, channel, cost, price, commission_rate, profit, account, note, created_at, updated_at
       FROM transactions
       ${whereSql}
       ORDER BY ${sortColumn} ${sortOrder}, id DESC
@@ -72,8 +72,8 @@ async function createTransaction(request, env) {
 
   const result = await env.DB
     .prepare(`
-      INSERT INTO transactions (seller, date, product, channel, cost, price, commission_rate, profit, note)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO transactions (seller, date, product, channel, cost, price, commission_rate, profit, account, note)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
     .bind(
       body.seller || 'company',
@@ -84,6 +84,7 @@ async function createTransaction(request, env) {
       price,
       body.commission_rate,
       body.profit,
+      body.account || '',
       body.note || ''
     )
     .run();
@@ -120,19 +121,20 @@ export async function handleTransactionItem(request, env, id) {
       price: body.price ?? existing.price,
       commission_rate: body.commission_rate ?? existing.commissionRate ?? existing.commission_rate ?? 0,
       profit: body.profit ?? existing.profit,
+      account: body.account ?? existing.account ?? '',
       note: body.note ?? existing.note,
     };
 
     await env.DB
       .prepare(`
         UPDATE transactions
-        SET seller=?, date=?, product=?, channel=?, cost=?, price=?, commission_rate=?, profit=?, note=?, updated_at=datetime('now')
+        SET seller=?, date=?, product=?, channel=?, cost=?, price=?, commission_rate=?, profit=?, account=?, note=?, updated_at=datetime('now')
         WHERE id = ?
       `)
       .bind(
         merged.seller, merged.date, merged.product, merged.channel,
         merged.cost || 0, merged.price || 0,
-        merged.commission_rate, merged.profit, merged.note || '', id
+        merged.commission_rate, merged.profit, merged.account || '', merged.note || '', id
       )
       .run();
 
@@ -164,6 +166,7 @@ function formatTransaction(row) {
     price: round2(row.price),
     commissionRate: row.commission_rate,
     profit: round2(row.profit),
+    account: row.account || '',
     note: row.note || '',
     createdAt: row.created_at,
     updatedAt: row.updated_at,

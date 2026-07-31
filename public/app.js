@@ -23,6 +23,7 @@ const el = {
   inputRate: $('#inputRate'), rateField: $('#rateField'), rateHint: $('#rateHint'),
   profitPreview: $('#profitPreview'), profitValue: $('#profitValue'), profitFormula: $('#profitFormula'),
   manualProfitField: $('#manualProfitField'), inputProfit: $('#inputProfit'),
+  accountField: $('#accountField'), inputAccount: $('#inputAccount'), accountHint: $('#accountHint'),
   inputNote: $('#inputNote'),
   channelTabs: $('#channelTabs'),
   submitBtn: $('#submitBtn'),
@@ -89,6 +90,8 @@ function selectSeller(seller) {
   el.sellerTabs.querySelectorAll('.seller-tab').forEach(btn => {
     btn.classList.toggle('seller-tab--active', btn.dataset.seller === seller);
   });
+  // 仅公司交易显示款项去向
+  el.accountField.style.display = seller === 'company' ? 'block' : 'none';
   setState({ filters: { seller, page: 1 } });
   refreshAll();
 }
@@ -98,6 +101,7 @@ function openCreateModal() {
   el.modalTitle.textContent = '记一笔 - ' + (currentSeller === 'company' ? '公司' : '个人');
   el.txnForm.reset();
   el.inputDate.value = todayStr();
+  el.accountField.style.display = currentSeller === 'company' ? 'block' : 'none';
   selectChannel('quota');
   clearErrors();
   el.modalOverlay.classList.add('modal-overlay--open');
@@ -110,10 +114,14 @@ async function openEditModal(id) {
   el.modalTitle.textContent = '编辑记录';
   clearErrors();
   currentSeller = txn.seller;
+  el.sellerTabs.querySelectorAll('.seller-tab').forEach(btn => {
+    btn.classList.toggle('seller-tab--active', btn.dataset.seller === txn.seller);
+  });
   el.inputDate.value = txn.date;
   el.inputProduct.value = txn.product;
   el.inputCost.value = txn.cost || '';
   el.inputPrice.value = txn.price || '';
+  el.inputAccount.value = txn.account || '';
   el.inputNote.value = txn.note || '';
   selectChannel(txn.channel);
   el.inputRate.value = ((txn.commissionRate || 0) * 100).toFixed(1).replace(/\.0$/, '');
@@ -122,6 +130,29 @@ async function openEditModal(id) {
   }
   updateProfitPreview();
   el.modalOverlay.classList.add('modal-overlay--open');
+}
+
+// ═══ 复制公司记录为个人记录 ═══
+function openCopyToPersonalModal(id) {
+  const txn = state.transactions.find(t => t.id === id);
+  if (!txn) return;
+  el.modalTitle.textContent = `复制为个人 · #${txn.id}`;
+  clearErrors();
+  currentSeller = 'personal';
+  el.sellerTabs.querySelectorAll('.seller-tab').forEach(btn => {
+    btn.classList.toggle('seller-tab--active', btn.dataset.seller === 'personal');
+  });
+  el.txnForm.reset();
+  el.inputDate.value = txn.date;
+  el.inputProduct.value = txn.product;
+  el.inputCost.value = txn.cost != null ? txn.cost : '';
+  el.inputPrice.value = txn.price != null ? txn.price : '';
+  el.inputAccount.value = txn.account || '';
+  el.inputNote.value = `自 #${txn.id} 复制`;
+  selectChannel(txn.channel);
+  updateProfitPreview();
+  el.modalOverlay.classList.add('modal-overlay--open');
+  setTimeout(() => el.inputRate.focus(), 300);
 }
 
 function closeModal() {
@@ -136,7 +167,8 @@ function clearErrors() {
 async function loadSummary() {
   try {
     const { startDate, endDate, seller } = state.filters;
-    const data = await api.getSummary({ startDate, endDate, seller });
+    const res = await api.getSummary({ startDate, endDate, seller });
+    const data = res.data || res;
     setState({ summary: data });
     renderSummary(data);
   } catch (e) { console.error('[Summary]', e); }
@@ -146,9 +178,11 @@ async function loadTransactions() {
   setState({ ui: { loading: true } });
   try {
     const f = state.filters;
-    const data = await api.listTransactions(f);
-    setState({ transactions: data, meta: { pagination: data.meta.pagination } });
-    renderList(data, data.meta.pagination);
+    const res = await api.listTransactions(f);
+    const data = res.data || res;
+    const pagination = (res.meta && res.meta.pagination) || (data.meta && data.meta.pagination) || {};
+    setState({ transactions: data, meta: { pagination } });
+    renderList(data, pagination);
   } catch (e) {
     showToast(e.message || '加载失败', 'error');
   } finally {
@@ -161,6 +195,8 @@ async function refreshAll() {
 }
 
 // ═══ 渲染 ═══
+const CHANNEL_LABELS = { quota: '额度', direct: '直款', recovery: '回收', other: '其他' };
+
 function renderSummary(s) {
   if (!s) { el.headerSubtitle.textContent = '暂无数据'; return; }
   el.statRevenue.textContent = formatCurrency(s.totalRevenue);
@@ -173,7 +209,7 @@ function renderSummary(s) {
 function renderList(data, pg) {
   el.recordCount.textContent = `${pg.totalItems} 笔`;
   if (!data || data.length === 0) {
-    el.txnList.innerHTML = `<div class="empty-state"><div class="empty-state__icon">📊</div><div class="empty-state__text">暂无记录<br>点击 + 记第一笔</div></div>`;
+    el.txnList.innerHTML = `<div class="empty-state"><div class="empty-state__text">暂无记录<br>点击右下角 + 记第一笔</div></div>`;
     el.pagination.style.display = 'none';
     return;
   }
@@ -181,15 +217,17 @@ function renderList(data, pg) {
     <div class="txn-item" data-id="${t.id}">
       <div class="txn-item__info">
         <div class="txn-item__title">
-          <span class="seller-badge seller-badge--${t.seller}">${t.seller === 'company' ? '公' : '个'}</span>
+          <span class="channel-badge channel-badge--${t.channel}">${CHANNEL_LABELS[t.channel] || t.channel}</span>
           ${escapeHtml(t.product)}
         </div>
         <div class="txn-item__meta">
           ${formatDate(t.date)} · 佣金 ${(t.commissionRate * 100).toFixed(1).replace(/\.0$/, '')}%
           ${t.cost ? ` · 成本 ${formatCurrency(t.cost)}` : ''}${t.price ? ` · 售价 ${formatCurrency(t.price)}` : ''}
+          ${t.account ? ` · 到账: ${escapeHtml(t.account)}` : ''}
         </div>
       </div>
       <div class="txn-item__amount">+${formatCurrency(t.profit)}</div>
+      ${t.seller === 'company' ? `<button class="txn-item__copy" data-id="${t.id}" title="复制为个人记录，单独配置利润">复制</button>` : ''}
       <button class="txn-item__delete" data-id="${t.id}" title="删除">×</button>
     </div>
   `).join('');
@@ -202,9 +240,15 @@ function renderList(data, pg) {
       catch (err) { showToast(err.message, 'error'); }
     });
   });
+  el.txnList.querySelectorAll('.txn-item__copy').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openCopyToPersonalModal(Number(btn.dataset.id));
+    });
+  });
   el.txnList.querySelectorAll('.txn-item').forEach(item => {
     item.addEventListener('click', (e) => {
-      if (e.target.closest('.txn-item__delete')) return;
+      if (e.target.closest('.txn-item__delete') || e.target.closest('.txn-item__copy')) return;
       openEditModal(Number(item.dataset.id));
     });
   });
@@ -246,6 +290,7 @@ async function handleSubmit(e) {
     price: parseFloat(el.inputPrice.value) || 0,
     commission_rate: isOther ? 0 : (parseFloat(el.inputRate.value) || 0) / 100,
     profit,
+    account: el.inputAccount.value.trim(),
     note: el.inputNote.value.trim(),
   };
 

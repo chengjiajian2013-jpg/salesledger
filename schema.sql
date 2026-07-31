@@ -13,6 +13,7 @@ CREATE TABLE transactions (
   price           REAL    DEFAULT 0,                            -- 售价（可选）
   commission_rate REAL    NOT NULL DEFAULT 0,                   -- 实际使用的佣金比例（小数）
   profit          REAL    NOT NULL,                             -- 利润（必填）
+  account         TEXT    NOT NULL DEFAULT '',                   -- 到账账户（公司对账用）
   note            TEXT    NOT NULL DEFAULT '',
   created_at      TEXT    NOT NULL DEFAULT (datetime('now')),
   updated_at      TEXT    NOT NULL DEFAULT (datetime('now'))
