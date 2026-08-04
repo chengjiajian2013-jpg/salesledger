@@ -249,12 +249,18 @@ function switchView(view) {
   el.viewTabs.querySelectorAll('.view-tab').forEach(btn => {
     btn.classList.toggle('view-tab--active', btn.dataset.view === view);
   });
-  
+
   if (view === 'transactions') {
+    // 交易明细：显示 seller-tabs 和统计卡片
+    el.sellerTabs.style.display = 'flex';
+    el.statsGrid.style.display = 'grid';
     el.transactionsView.style.display = 'block';
     el.monthlyView.style.display = 'none';
     refreshAll();
   } else {
+    // 月度统计：隐藏 seller-tabs，只显示月均+年总数
+    el.sellerTabs.style.display = 'none';
+    el.statsGrid.style.display = 'none';
     el.transactionsView.style.display = 'none';
     el.monthlyView.style.display = 'block';
     loadMonthlyStats();
