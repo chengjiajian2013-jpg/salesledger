@@ -9,11 +9,12 @@ export async function handleTransactions(request, env) {
 
 // 货源 / 品牌名 的去重建议列表（用于下拉框）
 export async function handleOptions(env) {
+  // 按出现次数降序排序（次数多的在前）
   const sourceRow = await env.DB
-    .prepare(`SELECT DISTINCT source FROM transactions WHERE source != '' ORDER BY source`)
+    .prepare(`SELECT source, COUNT(*) as count FROM transactions WHERE source != '' GROUP BY source ORDER BY count DESC, source ASC`)
     .all();
   const brandRow = await env.DB
-    .prepare(`SELECT DISTINCT brand FROM transactions WHERE brand != '' ORDER BY brand`)
+    .prepare(`SELECT brand, COUNT(*) as count FROM transactions WHERE brand != '' GROUP BY brand ORDER BY count DESC, brand ASC`)
     .all();
   return Response.json({
     data: {
