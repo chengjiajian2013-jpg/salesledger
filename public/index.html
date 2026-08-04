@@ -437,74 +437,99 @@ body {
   z-index: 9999;
 }
 .login-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 32px 24px;
-  max-width: 320px;
+  text-align: center;
+  max-width: 360px;
   width: 100%;
-  box-shadow: var(--shadow-md);
 }
 .login-card__title {
   font-family: var(--font-serif);
   font-size: 1.5rem;
   font-weight: 600;
-  text-align: center;
   margin-bottom: 8px;
   color: var(--text);
 }
 .login-card__subtitle {
   font-size: 0.875rem;
   color: var(--text-3);
-  text-align: center;
-  margin-bottom: 24px;
+  margin-bottom: 32px;
 }
-.login-card__input {
-  width: 100%;
-  padding: 12px 16px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  font-size: 1rem;
-  background: var(--surface);
-  color: var(--text);
-  transition: border-color 0.2s var(--ease);
-  margin-bottom: 16px;
+.login-card__dots {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 40px;
+  min-height: 16px;
 }
-.login-card__input:focus {
-  outline: none;
-  border-color: var(--gold);
+.login-card__dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--border-strong);
+  transition: all 0.2s var(--ease);
 }
-.login-card__btn {
-  width: 100%;
-  padding: 12px;
+.login-card__dot--filled {
   background: var(--gold);
-  color: white;
-  border: none;
-  border-radius: var(--radius-md);
-  font-size: 1rem;
-  font-weight: 600;
+  border-color: var(--gold);
+  transform: scale(1.1);
+}
+.login-card__dot--error {
+  background: var(--danger);
+  border-color: var(--danger);
+  animation: shake 0.4s ease;
+}
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-8px); }
+  75% { transform: translateX(8px); }
+}
+.login-card__keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  max-width: 280px;
+  margin: 0 auto;
+}
+.login-card__key {
+  aspect-ratio: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: var(--text);
   cursor: pointer;
-  transition: transform 0.15s var(--ease), opacity 0.2s var(--ease);
+  transition: all 0.15s var(--ease);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
-.login-card__btn:hover {
-  opacity: 0.9;
+.login-card__key:hover {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
 }
-.login-card__btn:active {
-  transform: scale(0.98);
+.login-card__key:active {
+  transform: scale(0.95);
+  background: var(--surface-3);
 }
-.login-card__btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.login-card__key--delete {
+  font-size: 1.1rem;
+  color: var(--text-3);
+}
+.login-card__key--empty {
+  visibility: hidden;
 }
 .login-card__error {
   color: var(--danger);
   font-size: 0.875rem;
-  text-align: center;
-  margin-top: 12px;
-  display: none;
+  margin-top: 20px;
+  min-height: 20px;
+  opacity: 0;
+  transition: opacity 0.2s var(--ease);
 }
 .login-card__error--visible {
-  display: block;
+  opacity: 1;
 }
 
 </style>
@@ -515,19 +540,33 @@ body {
 <div class="login-page" id="loginPage" style="display: none;">
   <div class="login-card">
     <h1 class="login-card__title">SalesLedger</h1>
-    <p class="login-card__subtitle">请输入访问密码</p>
-    <form id="loginForm">
-      <input
-        type="password"
-        class="login-card__input"
-        id="loginPassword"
-        placeholder="访问密码"
-        autocomplete="off"
-        autofocus
-      />
-      <button type="submit" class="login-card__btn" id="loginBtn">登录</button>
-      <div class="login-card__error" id="loginError"></div>
-    </form>
+    <p class="login-card__subtitle">输入密码</p>
+
+    <!-- 密码点指示器 -->
+    <div class="login-card__dots" id="loginDots">
+      <div class="login-card__dot"></div>
+      <div class="login-card__dot"></div>
+      <div class="login-card__dot"></div>
+      <div class="login-card__dot"></div>
+    </div>
+
+    <!-- 数字键盘 -->
+    <div class="login-card__keypad">
+      <button type="button" class="login-card__key" data-key="1">1</button>
+      <button type="button" class="login-card__key" data-key="2">2</button>
+      <button type="button" class="login-card__key" data-key="3">3</button>
+      <button type="button" class="login-card__key" data-key="4">4</button>
+      <button type="button" class="login-card__key" data-key="5">5</button>
+      <button type="button" class="login-card__key" data-key="6">6</button>
+      <button type="button" class="login-card__key" data-key="7">7</button>
+      <button type="button" class="login-card__key" data-key="8">8</button>
+      <button type="button" class="login-card__key" data-key="9">9</button>
+      <button type="button" class="login-card__key login-card__key--empty"></button>
+      <button type="button" class="login-card__key" data-key="0">0</button>
+      <button type="button" class="login-card__key login-card__key--delete" data-key="delete">⌫</button>
+    </div>
+
+    <div class="login-card__error" id="loginError"></div>
   </div>
 </div>
 

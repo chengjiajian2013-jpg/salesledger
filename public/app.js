@@ -9,9 +9,7 @@ import { isAuthenticated, login } from './modules/auth.js';
 // ═══ 认证检查 ═══
 const loginPage = document.getElementById('loginPage');
 const appContainer = document.getElementById('app');
-const loginForm = document.getElementById('loginForm');
-const loginPassword = document.getElementById('loginPassword');
-const loginBtn = document.getElementById('loginBtn');
+const loginDots = document.getElementById('loginDots');
 const loginError = document.getElementById('loginError');
 
 if (!isAuthenticated()) {
@@ -19,33 +17,86 @@ if (!isAuthenticated()) {
   loginPage.style.display = 'flex';
   appContainer.style.display = 'none';
 
-  loginForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const password = loginPassword.value.trim();
+  let password = '';
+  const MAX_LENGTH = 4;
 
-    if (!password) {
-      loginError.textContent = '请输入密码';
-      loginError.classList.add('login-card__error--visible');
-      return;
-    }
+  // 更新密码点显示
+  function updateDots() {
+    const dots = loginDots.querySelectorAll('.login-card__dot');
+    dots.forEach((dot, index) => {
+      dot.classList.remove('login-card__dot--filled', 'login-card__dot--error');
+      if (index < password.length) {
+        dot.classList.add('login-card__dot--filled');
+      }
+    });
+  }
 
-    loginBtn.disabled = true;
-    loginBtn.textContent = '登录中...';
-    loginError.classList.remove('login-card__error--visible');
+  // 显示错误动画
+  function showError(message) {
+    loginError.textContent = message;
+    loginError.classList.add('login-card__error--visible');
+
+    const dots = loginDots.querySelectorAll('.login-card__dot');
+    dots.forEach(dot => {
+      dot.classList.add('login-card__dot--error');
+    });
+
+    setTimeout(() => {
+      password = '';
+      updateDots();
+      loginError.classList.remove('login-card__error--visible');
+    }, 1000);
+  }
+
+  // 尝试登录
+  async function attemptLogin() {
+    if (password.length !== MAX_LENGTH) return;
 
     try {
       await login(password);
       // 登录成功，刷新页面进入应用
       window.location.reload();
     } catch (err) {
-      loginError.textContent = err.message || '密码错误';
-      loginError.classList.add('login-card__error--visible');
-      loginBtn.disabled = false;
-      loginBtn.textContent = '登录';
-      loginPassword.value = '';
-      loginPassword.focus();
+      showError('密码错误');
+    }
+  }
+
+  // 数字键盘点击事件
+  document.querySelectorAll('.login-card__key').forEach(key => {
+    key.addEventListener('click', async () => {
+      const value = key.dataset.key;
+
+      if (!value) return;
+
+      if (value === 'delete') {
+        password = password.slice(0, -1);
+        updateDots();
+      } else if (password.length < MAX_LENGTH) {
+        password += value;
+        updateDots();
+
+        // 输入满 4 位自动验证
+        if (password.length === MAX_LENGTH) {
+          await attemptLogin();
+        }
+      }
+    });
+  });
+
+  // 物理键盘支持
+  document.addEventListener('keydown', async (e) => {
+    if (e.key >= '0' && e.key <= '9' && password.length < MAX_LENGTH) {
+      password += e.key;
+      updateDots();
+      if (password.length === MAX_LENGTH) {
+        await attemptLogin();
+      }
+    } else if (e.key === 'Backspace') {
+      password = password.slice(0, -1);
+      updateDots();
     }
   });
+
 } else {
   // 已登录，显示应用主界面
   loginPage.style.display = 'none';
