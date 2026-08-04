@@ -1,5 +1,7 @@
 // SalesLedger — API 通信层
 
+import { getToken, clearToken } from './auth.js';
+
 const BASE = '/api/v1';
 
 async function request(path, { method = 'GET', body, params } = {}) {
@@ -9,15 +11,32 @@ async function request(path, { method = 'GET', body, params } = {}) {
       if (v != null && v !== '') url.searchParams.set(k, String(v));
     });
   }
+
+  const headers = { 'Content-Type': 'application/json' };
+  const token = getToken();
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const res = await fetch(url, {
     method,
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: body ? JSON.stringify(body) : undefined,
   });
+
   if (res.status === 204) return null;
+
   let data;
   try { data = await res.json(); } catch { data = null; }
+
   if (!res.ok) {
+    // 401 未授权，清除 Token 并触发重新登录
+    if (res.status === 401) {
+      clearToken();
+      window.location.reload();
+      return;
+    }
+
     const err = new Error(data?.error?.message || `HTTP ${res.status}`);
     err.code = data?.error?.code;
     err.details = data?.error?.details;

@@ -4,6 +4,57 @@ import { api } from './modules/api.js';
 import { state, setState, subscribe, getState } from './modules/state.js';
 import { COMMISSION_DEFAULTS, calcProfit, formatRate } from './modules/commission.js';
 import { formatCurrency, formatDate, todayStr, escapeHtml, capitalizeBrand } from './modules/format.js';
+import { isAuthenticated, login } from './modules/auth.js';
+
+// ═══ 认证检查 ═══
+const loginPage = document.getElementById('loginPage');
+const appContainer = document.getElementById('app');
+const loginForm = document.getElementById('loginForm');
+const loginPassword = document.getElementById('loginPassword');
+const loginBtn = document.getElementById('loginBtn');
+const loginError = document.getElementById('loginError');
+
+if (!isAuthenticated()) {
+  // 未登录，显示登录页
+  loginPage.style.display = 'flex';
+  appContainer.style.display = 'none';
+
+  loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const password = loginPassword.value.trim();
+
+    if (!password) {
+      loginError.textContent = '请输入密码';
+      loginError.classList.add('login-card__error--visible');
+      return;
+    }
+
+    loginBtn.disabled = true;
+    loginBtn.textContent = '登录中...';
+    loginError.classList.remove('login-card__error--visible');
+
+    try {
+      await login(password);
+      // 登录成功，刷新页面进入应用
+      window.location.reload();
+    } catch (err) {
+      loginError.textContent = err.message || '密码错误';
+      loginError.classList.add('login-card__error--visible');
+      loginBtn.disabled = false;
+      loginBtn.textContent = '登录';
+      loginPassword.value = '';
+      loginPassword.focus();
+    }
+  });
+} else {
+  // 已登录，显示应用主界面
+  loginPage.style.display = 'none';
+  appContainer.style.display = 'block';
+  initApp();
+}
+
+// ═══ 应用初始化 ═══
+function initApp() {
 
 // ═══ DOM ═══
 const $ = (s) => document.querySelector(s);
@@ -706,19 +757,22 @@ function bindEvents() {
   });
 }
 
-// ═══ 初始化 ═══
-async function init() {
+// ═══ 应用启动 ═══
+async function startApp() {
   // 初始化月份选择器为当月
   el.filterMonth.value = getCurrentMonth();
   setMonth(getCurrentMonth());
-  
+
   // 初始化年份选择器（最近3年）
   const currentYear = new Date().getFullYear();
   const years = [currentYear, currentYear - 1, currentYear - 2];
   el.yearFilter.innerHTML = years.map(y => `<option value="${y}">${y}年</option>`).join('');
-  
+
   bindEvents();
   await refreshAll();
 }
 
-document.addEventListener('DOMContentLoaded', init);
+// 启动应用
+document.addEventListener('DOMContentLoaded', startApp);
+
+} // end of initApp()

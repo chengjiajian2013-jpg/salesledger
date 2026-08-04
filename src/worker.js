@@ -4,6 +4,7 @@
 import { handleTransactions, handleTransactionItem, handleOptions } from './transactions.js';
 import { handleSummary } from './summary.js';
 import { handleParse } from './parse.js';
+import { handleLogin, requireAuth } from './auth.js';
 import { SCHEMA_STATEMENTS } from './schema.js';
 
 // 单例：确保只初始化一次
@@ -71,21 +72,30 @@ export default {
 
         let response;
 
+        // 健康检查和登录接口无需认证
         if (path === '/api/v1/health') {
           response = Response.json({ data: { status: 'ok', version: '1.0.0' } });
-        } else if (path === '/api/v1/transactions' && ['GET', 'POST'].includes(method)) {
-          response = await handleTransactions(request, env);
-        } else if (path.match(/^\/api\/v1\/transactions\/\d+$/) && ['GET', 'PATCH', 'DELETE'].includes(method)) {
-          const id = parseInt(path.split('/').pop(), 10);
-          response = await handleTransactionItem(request, env, id);
-        } else if (path === '/api/v1/summary' && method === 'GET') {
-          response = await handleSummary(request, env);
-        } else if (path === '/api/v1/options' && method === 'GET') {
-          response = await handleOptions(env);
-        } else if (path === '/api/v1/parse' && method === 'POST') {
-          response = await handleParse(request, env);
+        } else if (path === '/api/v1/auth/login' && method === 'POST') {
+          response = await handleLogin(request, env);
         } else {
-          response = jsonError('RESOURCE_NOT_FOUND', '接口不存在: ' + path, 404);
+          // 所有其他 API 需要认证
+          const authError = await requireAuth(request, env);
+          if (authError) {
+            response = authError;
+          } else if (path === '/api/v1/transactions' && ['GET', 'POST'].includes(method)) {
+            response = await handleTransactions(request, env);
+          } else if (path.match(/^\/api\/v1\/transactions\/\d+$/) && ['GET', 'PATCH', 'DELETE'].includes(method)) {
+            const id = parseInt(path.split('/').pop(), 10);
+            response = await handleTransactionItem(request, env, id);
+          } else if (path === '/api/v1/summary' && method === 'GET') {
+            response = await handleSummary(request, env);
+          } else if (path === '/api/v1/options' && method === 'GET') {
+            response = await handleOptions(env);
+          } else if (path === '/api/v1/parse' && method === 'POST') {
+            response = await handleParse(request, env);
+          } else {
+            response = jsonError('RESOURCE_NOT_FOUND', '接口不存在: ' + path, 404);
+          }
         }
 
         Object.entries(corsHeaders).forEach(([k, v]) => response.headers.append(k, v));
