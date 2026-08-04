@@ -25,3 +25,15 @@ export function escapeHtml(str) {
   div.textContent = str == null ? '' : String(str);
   return div.innerHTML;
 }
+
+// 品牌名首字母大写（处理英文单词）
+export function capitalizeBrand(brand) {
+  if (!brand) return '';
+  return brand.trim().split(/\s+/).map(word => {
+    // 只处理英文单词（首字母大写，其余小写）
+    if (/^[a-zA-Z]/.test(word)) {
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    }
+    return word; // 中文或其他字符保持不变
+  }).join(' ');
+}

@@ -3,7 +3,7 @@
 import { api } from './modules/api.js';
 import { state, setState, subscribe, getState } from './modules/state.js';
 import { COMMISSION_DEFAULTS, calcProfit, formatRate } from './modules/commission.js';
-import { formatCurrency, formatDate, todayStr, escapeHtml } from './modules/format.js';
+import { formatCurrency, formatDate, todayStr, escapeHtml, capitalizeBrand } from './modules/format.js';
 
 // ═══ DOM ═══
 const $ = (s) => document.querySelector(s);
@@ -431,12 +431,15 @@ function renderMonthlyStats(months) {
     el.monthlyList.innerHTML = '<div class="empty-state"><div class="empty-state__text">暂无数据</div></div>';
     return;
   }
-  
+
+  const BASE_SALARY = 8000; // 公司底薪
+
   el.monthlyList.innerHTML = months.map(m => {
-    const totalProfit = m.companyProfit + m.personalProfit;
+    const companyTotal = m.companyProfit + BASE_SALARY; // 公司收入 = 利润 + 底薪
+    const totalIncome = companyTotal + m.personalProfit; // 总收入 = 公司总收入 + 个人利润
     const totalCount = m.companyCount + m.personalCount;
     if (totalCount === 0) return ''; // 跳过没有交易的月份
-    
+
     return `
       <div class="monthly-card" data-year="${m.year}" data-month="${m.month}">
         <div class="monthly-card__header">
@@ -446,7 +449,8 @@ function renderMonthlyStats(months) {
         <div class="monthly-card__stats">
           <div class="monthly-card__stat">
             <div class="monthly-card__stat-label">公司收入</div>
-            <div class="monthly-card__stat-value">${formatCurrency(m.companyProfit)}</div>
+            <div class="monthly-card__stat-value">${formatCurrency(companyTotal)}</div>
+            <div class="monthly-card__stat-detail">底薪¥8,000 + 利润${formatCurrency(m.companyProfit)}</div>
           </div>
           <div class="monthly-card__stat">
             <div class="monthly-card__stat-label">个人收入</div>
@@ -454,7 +458,7 @@ function renderMonthlyStats(months) {
           </div>
           <div class="monthly-card__stat monthly-card__stat--profit">
             <div class="monthly-card__stat-label">总收入</div>
-            <div class="monthly-card__stat-value">${formatCurrency(totalProfit)}</div>
+            <div class="monthly-card__stat-value">${formatCurrency(totalIncome)}</div>
           </div>
         </div>
       </div>
@@ -590,7 +594,7 @@ async function handleSubmit(e) {
   const body = {
     seller: currentSeller,
     source: el.inputSource.value.trim(),
-    brand: el.inputBrand.value.trim(),
+    brand: capitalizeBrand(el.inputBrand.value),
     date: el.inputDate.value,
     product: el.inputProduct.value.trim(),
     channel,
