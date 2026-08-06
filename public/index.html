@@ -87,7 +87,7 @@ body {
   border-radius: var(--radius-md); padding: 3px; margin-bottom: 14px;
 }
 .seller-tab {
-  flex: 1; height: 38px; border: none; border-radius: calc(var(--radius-md) - 2px);
+  flex: 1; height: 40px; border: none; border-radius: calc(var(--radius-md) - 2px);
   font-family: inherit; font-size: 0.85rem; font-weight: 600;
   cursor: pointer; background: transparent; color: var(--text-3);
   transition: all var(--transition);
@@ -100,7 +100,7 @@ body {
   border-radius: var(--radius-md); padding: 3px; margin-bottom: 14px;
 }
 .view-tab {
-  flex: 1; height: 38px; border: none; border-radius: calc(var(--radius-md) - 2px);
+  flex: 1; height: 40px; border: none; border-radius: calc(var(--radius-md) - 2px);
   font-family: inherit; font-size: 0.85rem; font-weight: 600;
   cursor: pointer; background: transparent; color: var(--text-3);
   transition: all var(--transition);
@@ -120,6 +120,12 @@ body {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 18px;
 }
 .stats-grid--2 { grid-template-columns: repeat(2, 1fr); }
+
+/* 窄屏幕优化：< 360px 时改为 2 列 */
+@media (max-width: 359px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+}
+
 .stat-card {
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius-md); padding: 16px 12px; text-align: center;
@@ -135,7 +141,7 @@ body {
 /* ═══ FILTER ═══ */
 .filter-bar { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
 .filter-bar input, .filter-bar select {
-  height: 38px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  height: 44px; border: 1px solid var(--border); border-radius: var(--radius-sm);
   padding: 0 12px; font-family: inherit; font-size: 0.82rem;
   background: var(--surface); color: var(--text); outline: none;
   transition: border-color 0.2s, box-shadow 0.2s;
@@ -147,7 +153,7 @@ body {
   display: flex; gap: 6px;
 }
 .month-nav__btn {
-  width: 38px; height: 38px; border: 1px solid var(--border);
+  width: 44px; height: 44px; border: 1px solid var(--border);
   border-radius: var(--radius-sm); background: var(--surface); color: var(--text);
   font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
   transition: all 0.2s;
@@ -174,13 +180,14 @@ body {
 .txn-item__meta { font-size: 0.7rem; color: var(--text-3); margin-top: 3px; line-height: 1.4; }
 .txn-item__amount { font-family: var(--font-numeric); font-size: 1.05rem; font-weight: 600; color: var(--success); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .txn-item__delete {
-  width: 28px; height: 28px; border-radius: 50%; border: none;
+  width: 36px; height: 36px; border-radius: 50%; border: none;
   background: var(--surface-2); color: var(--text-3); cursor: pointer;
   flex-shrink: 0; font-size: 1rem; transition: all 0.2s;
+  display: flex; align-items: center; justify-content: center;
 }
 .txn-item__delete:hover { background: var(--danger); color: #fff; }
 .txn-item__copy {
-  height: 28px; padding: 0 10px; border-radius: 14px; border: none;
+  height: 36px; padding: 0 12px; border-radius: 18px; border: none;
   background: var(--gold-soft); color: var(--gold-text); cursor: pointer;
   flex-shrink: 0; font-size: 0.7rem; font-weight: 600; transition: all 0.2s;
 }
@@ -204,12 +211,13 @@ body {
 .fab {
   position: fixed; bottom: calc(var(--safe-bottom) + 18px);
   right: max(18px, calc(50% - 199px));
-  width: 56px; height: 56px; border-radius: 50%;
-  background: var(--accent); color: var(--bg); border: 2px solid var(--gold);
-  font-size: 1.6rem; cursor: pointer; box-shadow: var(--shadow-lg);
+  width: 60px; height: 60px; border-radius: 50%;
+  background: var(--gold); color: #fff; border: none;
+  font-size: 1.6rem; cursor: pointer; box-shadow: 0 4px 12px rgba(184,134,11,0.30);
   z-index: 90; display: flex; align-items: center; justify-content: center;
   transition: transform 0.15s var(--ease), box-shadow 0.2s var(--ease);
 }
+.fab:hover { box-shadow: 0 6px 16px rgba(184,134,11,0.40); }
 .fab:active { transform: scale(0.92); }
 .modal-overlay {
   position: fixed; inset: 0; background: rgba(20,18,15,0.35);
@@ -234,7 +242,7 @@ body {
   letter-spacing: 0.06em; color: var(--text-3); margin-bottom: 5px; display: block;
 }
 .form-field__input, .form-field__select {
-  width: 100%; height: 42px; border: 1px solid var(--border);
+  width: 100%; height: 44px; border: 1px solid var(--border);
   border-radius: var(--radius-sm); padding: 0 12px; font-family: inherit;
   font-size: 0.9rem; background: var(--surface-2); color: var(--text);
   outline: none; transition: border-color 0.2s, box-shadow 0.2s;
@@ -351,12 +359,15 @@ body {
 
 .submit-btn {
   width: 100%; height: 48px; border: none; border-radius: var(--radius-md);
-  background: var(--accent); color: var(--bg); font-family: inherit;
+  background: var(--gold); color: #fff; font-family: inherit;
   font-size: 0.92rem; font-weight: 600; cursor: pointer; margin-top: 10px;
-  transition: transform 0.15s var(--ease), opacity 0.2s; letter-spacing: 0.02em;
+  box-shadow: 0 2px 6px rgba(184,134,11,0.25);
+  transition: transform 0.15s var(--ease), box-shadow 0.2s var(--ease);
+  letter-spacing: 0.02em;
 }
+.submit-btn:hover { box-shadow: 0 4px 10px rgba(184,134,11,0.35); }
 .submit-btn:active { transform: scale(0.98); }
-.submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.submit-btn:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
 
 /* ═══ EMPTY & TOAST ═══ */
 .empty-state { text-align: center; padding: 56px 24px; color: var(--text-3); }
@@ -426,6 +437,19 @@ body {
 
 @media (min-width: 431px) {
   .app { border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+}
+
+/* 横屏优化 */
+@media (orientation: landscape) and (max-height: 500px) {
+  .header { --header-h: 44px; }
+  .header__title { font-size: 0.9rem; }
+  .header__subtitle { font-size: 0.65rem; }
+  .view-tabs, .seller-tabs { height: 38px; padding: 2px; }
+  .view-tab, .seller-tab { font-size: 0.75rem; height: 34px; }
+  .content { padding-top: 12px; padding-bottom: calc(var(--safe-bottom) + 70px); }
+  .fab { width: 52px; height: 52px; font-size: 1.4rem; }
+  .stats-grid { gap: 8px; margin-bottom: 12px; }
+  .stat-card { padding: 12px 10px; }
 }
 
 /* ═══ LOGIN PAGE ═══ */
