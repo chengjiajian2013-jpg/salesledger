@@ -110,7 +110,6 @@ function initApp() {
 // ═══ DOM ═══
 const $ = (s) => document.querySelector(s);
 const el = {
-  headerSubtitle: $('#headerSubtitle'),
   statsGrid: $('#statsGrid'),
   sellerTabs: $('#sellerTabs'),
   viewTabs: $('#viewTabs'),
@@ -615,8 +614,7 @@ function renderSummary(s) {
     </div>
   `).join('');
 
-  const sellerLabel = seller === 'personal' ? '个人' : '公司';
-  el.headerSubtitle.textContent = `${sellerLabel} · ${s.transactionCount} 笔`;
+  // headerSubtitle 已移除，不再显示
   // 均利显示在交易明细右边
   el.recordCount.textContent = `${s.transactionCount} 笔 · 均利 ${formatCurrency(s.averageProfit)}`;
 }
