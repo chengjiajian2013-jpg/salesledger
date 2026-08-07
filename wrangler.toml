@@ -16,3 +16,13 @@ database_id = "1a88bdc1-98a3-462f-8f48-8dad0730f6ad"
 ENV = "development"
 # 生产密码通过 Cloudflare Secret 配置
 # 本地开发时可以临时添加: ACCESS_KEY = "1234"
+
+# 测试环境配置
+[env.test]
+name = "salesledger-test"
+vars = { ENV = "test" }
+
+[[env.test.d1_databases]]
+binding = "DB"
+database_name = "salesledger-test-db"
+database_id = "6e82a163-0b1a-4031-91d9-fce3979c7c13"

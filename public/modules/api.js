@@ -4,6 +4,27 @@ import { getToken, clearToken } from './auth.js';
 
 const BASE = '/api/v1';
 
+// 加载动画控制
+let loadingCount = 0;
+let loadingOverlay = null;
+
+function showLoading() {
+  if (!loadingOverlay) {
+    loadingOverlay = document.getElementById('loadingOverlay');
+  }
+  loadingCount++;
+  if (loadingOverlay && loadingCount > 0) {
+    loadingOverlay.classList.add('active');
+  }
+}
+
+function hideLoading() {
+  loadingCount = Math.max(0, loadingCount - 1);
+  if (loadingOverlay && loadingCount === 0) {
+    loadingOverlay.classList.remove('active');
+  }
+}
+
 async function request(path, { method = 'GET', body, params } = {}) {
   const url = new URL(BASE + path, location.origin);
   if (params) {
@@ -18,32 +39,38 @@ async function request(path, { method = 'GET', body, params } = {}) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const res = await fetch(url, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  showLoading();
 
-  if (res.status === 204) return null;
+  try {
+    const res = await fetch(url, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
 
-  let data;
-  try { data = await res.json(); } catch { data = null; }
+    if (res.status === 204) return null;
 
-  if (!res.ok) {
-    // 401 未授权，清除 Token 并触发重新登录
-    if (res.status === 401) {
-      clearToken();
-      window.location.reload();
-      return;
+    let data;
+    try { data = await res.json(); } catch { data = null; }
+
+    if (!res.ok) {
+      // 401 未授权，清除 Token 并触发重新登录
+      if (res.status === 401) {
+        clearToken();
+        window.location.reload();
+        return;
+      }
+
+      const err = new Error(data?.error?.message || `HTTP ${res.status}`);
+      err.code = data?.error?.code;
+      err.details = data?.error?.details;
+      err.status = res.status;
+      throw err;
     }
-
-    const err = new Error(data?.error?.message || `HTTP ${res.status}`);
-    err.code = data?.error?.code;
-    err.details = data?.error?.details;
-    err.status = res.status;
-    throw err;
+    return data;
+  } finally {
+    hideLoading();
   }
-  return data;
 }
 
 export const api = {

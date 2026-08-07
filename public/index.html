@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>SalesLedger</title>
+<title>Joeyzou记账本</title>
 <style>
 /* ═══ DESIGN SYSTEM ═══
    暖奢记账：米白底 + 金色点缀 + 深绿利润
@@ -452,6 +452,107 @@ body {
   .stat-card { padding: 12px 10px; }
 }
 
+/* ═══ LOADING OVERLAY ═══ */
+.loading-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(244, 241, 234, 0.95);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 10000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.loading-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* 小猫转圈加载动画 - 来自 demo */
+.cat {
+  position: relative;
+  width: 100%;
+  max-width: 8em;
+  overflow: hidden;
+  background-color: #F4F1EA; /* 米白色背景，匹配加载层 */
+  border-radius: 12px; /* 添加圆角 */
+}
+.cat::before {
+  content: '';
+  display: block;
+  padding-bottom: 100%;
+}
+
+.cat__head, .cat__tail, .cat__body {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  animation: rotating 2.79s cubic-bezier(0.65, 0.54, 0.12, 0.93) infinite;
+}
+.cat__head::before, .cat__tail::before, .cat__body::before {
+  content: '';
+  position: absolute;
+  width: 50%;
+  height: 50%;
+  background-size: 200%;
+  background-repeat: no-repeat;
+  background-image: url("/cat-loading.png");
+}
+
+.cat__head::before {
+  top: 0;
+  right: 0;
+  background-position: 100% 0%;
+  transform-origin: 0% 100%;
+  transform: rotate(90deg);
+}
+
+.cat__tail {
+  animation-delay: .2s;
+}
+.cat__tail::before {
+  left: 0;
+  bottom: 0;
+  background-position: 0% 100%;
+  transform-origin: 100% 0%;
+  transform: rotate(-30deg);
+}
+
+.cat__body {
+  animation-delay: .1s;
+}
+.cat__body:nth-of-type(2) {
+  animation-delay: .2s;
+}
+.cat__body::before {
+  right: 0;
+  bottom: 0;
+  background-position: 100% 100%;
+  transform-origin: 0% 0%;
+}
+
+@keyframes rotating {
+  from {
+    transform: rotate(720deg);
+  }
+  to {
+    transform: none;
+  }
+}
+
+/* 加载文字 */
+.loading-text {
+  position: absolute;
+  bottom: -50px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.875rem;
+  color: var(--text-2);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
 /* ═══ LOGIN PAGE ═══ */
 .login-page {
   position: fixed; top: 0; left: 0; right: 0; bottom: 0;
@@ -563,7 +664,7 @@ body {
 <!-- ═══ LOGIN PAGE ═══ -->
 <div class="login-page" id="loginPage" style="display: none;">
   <div class="login-card">
-    <h1 class="login-card__title">SalesLedger</h1>
+    <h1 class="login-card__title">Joeyzou记账本</h1>
     <p class="login-card__subtitle">输入密码</p>
 
     <!-- 密码点指示器 -->
@@ -599,9 +700,8 @@ body {
   <!-- ═══ HEADER ═══ -->
   <header class="header">
     <div class="header__top">
-      <div class="header__title">SalesLedger</div>
+      <div class="header__title">Joeyzou记账本</div>
     </div>
-    <div class="header__subtitle" id="headerSubtitle">本月 · 加载中...</div>
     <div class="view-tabs" id="viewTabs">
       <button class="view-tab view-tab--active" data-view="transactions">交易明细</button>
       <button class="view-tab" data-view="monthly">月度统计</button>
@@ -783,6 +883,15 @@ body {
 </div>
 
 <div class="toast-container" id="toastContainer"></div>
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="cat">
+    <div class="cat__body"></div>
+    <div class="cat__body"></div>
+    <div class="cat__tail"></div>
+    <div class="cat__head"></div>
+  </div>
+  <div class="loading-text">加载中...</div>
+</div>
 <script type="module" src="./app.js"></script>
 </body>
 </html>
