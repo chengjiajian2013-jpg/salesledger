@@ -424,5 +424,5 @@ border: 2px solid var(--border-strong);
 ---
 
 **Version:** 1.0  
-**Last updated:** 2026-08-04  
-**Maintained by:** Product owner & Claude (via /impeccable document)
+**Last updated:** 2026-08-07  
+**Maintained by:** Product owner & Claude Opus 4.8

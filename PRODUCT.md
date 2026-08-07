@@ -2,11 +2,13 @@
 
 ## Product
 
-**Name:** SalesLedger  
+**Name:** Joeyzou记账本（代号 SalesLedger）  
 **Tagline:** 按笔记录交易的个人工作台  
 **Category:** Personal productivity tool — sales commission tracker  
 **Platform:** web  
-**Domain:** salesledger.chengjiajian2013.workers.dev
+**Domain:** 
+- 生产: salesledger.chengjiajian2013.workers.dev
+- 测试: salesledger-test.chengjiajian2013.workers.dev (密码: 1234)
 
 SalesLedger is a personal sales ledger for tracking individual and company transactions with commission calculations. It's designed for sales staff in luxury resale (二奢) who need to quickly log completed deals on their phone and calculate their earnings from base salary plus commission across different sales channels.
 
@@ -77,12 +79,15 @@ SalesLedger is a personal sales ledger for tracking individual and company trans
 - Company sales: ¥8,000/month base + channel-specific commission
 - Personal sales: 100% profit (no base salary component)
 
-**Current state:** v3.2 deployed to production
-- Authentication: 4-digit numeric passcode (0725)
+**Current state:** v1.0 deployed to production (2026-08-07)
+- Authentication: 4-digit numeric passcode
+  - 测试环境: 1234 (hardcoded)
+  - 生产环境: 通过 Cloudflare Secret 配置
 - UI: iPhone-style keypad, dual-tab structure (Transactions/Monthly Stats)
 - Transaction list with company/personal toggle
 - Monthly statistics with earnings breakdown
-- AI-powered transaction parsing from natural language
+- Loading animation: CSS3 cat spinner (统一背景色)
+- Test environment: Independent database with 19 test transactions
 
 **Not yet built (v2 backlog):**
 - PWA offline support
@@ -93,5 +98,5 @@ SalesLedger is a personal sales ledger for tracking individual and company trans
 
 ---
 
-**Last updated:** 2026-08-04  
-**Maintained by:** Product owner & Claude (via /impeccable init)
+**Last updated:** 2026-08-07  
+**Maintained by:** Product owner & Claude Opus 4.8

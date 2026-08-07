@@ -14,7 +14,8 @@
 | 环境 | URL |
 |------|-----|
 | 本地开发 | `http://localhost:8787` |
-| 生产 | `https://salesledger.your-account.workers.dev` |
+| 测试 | `https://salesledger-test.chengjiajian2013.workers.dev` |
+| 生产 | `https://salesledger.chengjiajian2013.workers.dev` |
 
 所有 API 路径以 `/api/v1` 为前缀。**v1 保证向后兼容**，破坏性变更只能发生在 v2。
 
