@@ -1208,20 +1208,19 @@ function updateTotalGoods() {
   });
 
   if (total > 0) {
-    let displayText = `(总计: ${total.toFixed(0)}元`;
+    let displayText = `(总计: ${total.toFixed(0)}元)`;
 
-    // 计算差额（额度总计 - 实际货物总计）
+    // 计算差额（额度总计 - 实际货物总计），单独括号显示
     const quota = parseFloat(formQuota.value);
     if (quota && quota > 0) {
       const diff = quota - total;
       if (diff > 0) {
-        displayText += ` -${diff.toFixed(0)}元`;
+        displayText += ` (-${diff.toFixed(0)}元)`;
       } else if (diff < 0) {
-        displayText += ` +${Math.abs(diff).toFixed(0)}元`;
+        displayText += ` (+${Math.abs(diff).toFixed(0)}元)`;
       }
     }
 
-    displayText += ')';
     totalGoodsDisplay.textContent = displayText;
   } else {
     totalGoodsDisplay.textContent = '';
@@ -1244,6 +1243,34 @@ if (formQuota) {
   });
 }
 
+// 限制所有数字输入框只能输入数字和小数点
+function restrictNumberInput(input) {
+  input.addEventListener('input', (e) => {
+    let value = e.target.value;
+    let originalValue = value;
+
+    // 只保留数字和小数点
+    value = value.replace(/[^\d.]/g, '');
+
+    // 只保留第一个小数点
+    const parts = value.split('.');
+    if (parts.length > 2) {
+      value = parts[0] + '.' + parts.slice(1).join('');
+    }
+
+    // 只有当值发生变化时才更新，避免死循环
+    if (value !== originalValue) {
+      e.target.value = value;
+    }
+  });
+}
+
+// 为已存在的数字输入框添加限制
+if (formQuota) restrictNumberInput(formQuota);
+if (formCost) restrictNumberInput(formCost);
+if (formPrice) restrictNumberInput(formPrice);
+goodsItems.querySelectorAll('.goods-amount').forEach(input => restrictNumberInput(input));
+
 // 添加货物项
 if (addGoodsBtn) {
   addGoodsBtn.addEventListener('click', () => {
@@ -1252,10 +1279,15 @@ if (addGoodsBtn) {
     item.className = 'ai-form__quota-item';
     item.dataset.index = index;
     item.innerHTML = `
-      <input type="number" class="ai-form__input goods-amount" placeholder="货物金额（元）" style="flex:1;">
+      <input type="text" class="ai-form__input goods-name" placeholder="商品名称" style="width:80px;flex-shrink:0;">
+      <input type="text" inputmode="decimal" class="ai-form__input goods-amount" placeholder="货物金额（元）" style="flex:1;" data-number-only>
       <button type="button" class="ai-form__btn-remove" style="width:32px;height:38px;border:1px solid var(--danger);color:var(--danger);background:var(--surface);border-radius:var(--radius-sm);cursor:pointer;">−</button>
     `;
     goodsItems.appendChild(item);
+
+    // 为新添加的货物金额输入框添加数字限制
+    const newAmountInput = item.querySelector('.goods-amount');
+    if (newAmountInput) restrictNumberInput(newAmountInput);
 
     // 绑定删除按钮
     item.querySelector('.ai-form__btn-remove').addEventListener('click', () => {

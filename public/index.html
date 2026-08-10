@@ -983,18 +983,18 @@ body {
             <div class="ai-form__content" id="aiFormContent">
               <div class="ai-form__group">
                 <label class="ai-form__label">额度总计</label>
-                <input type="number" class="ai-form__input" id="formQuota" placeholder="例：53000" step="1">
+                <input type="text" inputmode="decimal" class="ai-form__input" id="formQuota" placeholder="例：53000" data-number-only>
               </div>
 
               <div class="ai-form__row">
                 <div class="ai-form__group" id="formCostGroup" style="display:none;">
                   <label class="ai-form__label">成本折扣</label>
-                  <input type="number" class="ai-form__input" id="formCost" placeholder="例：0.82" step="0.01">
+                  <input type="text" inputmode="decimal" class="ai-form__input" id="formCost" placeholder="例：0.82" data-number-only>
                 </div>
 
                 <div class="ai-form__group">
                   <label class="ai-form__label">卖价折扣</label>
-                  <input type="number" class="ai-form__input" id="formPrice" placeholder="例：0.88" step="0.01">
+                  <input type="text" inputmode="decimal" class="ai-form__input" id="formPrice" placeholder="例：0.88" data-number-only>
                 </div>
               </div>
 
@@ -1002,7 +1002,8 @@ body {
                 <label class="ai-form__label">实际货物金额（元） <span id="totalGoodsDisplay" style="color:var(--text-3);font-size:0.75rem;"></span></label>
                 <div id="goodsItems">
                   <div class="ai-form__quota-item" data-index="0">
-                    <input type="number" class="ai-form__input goods-amount" placeholder="货物金额（元）" style="flex:1;">
+                    <input type="text" class="ai-form__input goods-name" placeholder="商品名称" style="width:80px;flex-shrink:0;">
+                    <input type="text" inputmode="decimal" class="ai-form__input goods-amount" placeholder="货物金额（元）" style="flex:1;" data-number-only>
                     <button type="button" class="ai-form__btn-remove" style="width:32px;height:38px;border:1px solid var(--danger);color:var(--danger);background:var(--surface);border-radius:var(--radius-sm);cursor:pointer;">−</button>
                   </div>
                 </div>
