@@ -333,7 +333,13 @@ async function loadOptions() {
 // ═══ Modal ═══
 function openCreateModal() {
   editingId = null;  // 明确是创建模式
-  el.modalTitle.textContent = '记一笔 - ' + (currentSeller === 'company' ? '公司' : '个人');
+  el.modalTitle.textContent = '记一笔';
+
+  // 更新身份标识
+  const sellerBadge = document.getElementById('modalSellerBadge');
+  sellerBadge.textContent = currentSeller === 'company' ? '公司' : '个人';
+  sellerBadge.className = 'modal__seller-badge modal__seller-badge--' + currentSeller;
+
   el.txnForm.reset();
   el.inputDate.value = todayStr();
   el.accountField.style.display = currentSeller === 'company' ? 'block' : 'none';
@@ -351,6 +357,12 @@ async function openEditModal(id) {
   const txn = state.transactions.find(t => t.id === id);
   if (!txn) return;
   el.modalTitle.textContent = '编辑记录';
+
+  // 更新身份标识
+  const sellerBadge = document.getElementById('modalSellerBadge');
+  sellerBadge.textContent = txn.seller === 'company' ? '公司' : '个人';
+  sellerBadge.className = 'modal__seller-badge modal__seller-badge--' + txn.seller;
+
   clearErrors();
   resetParse();
   selectSeller(txn.seller, true);  // 切换 seller，但不刷新数据
