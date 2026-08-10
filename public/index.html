@@ -226,7 +226,7 @@ body {
 }
 .modal-overlay--open { display: flex; }
 .modal {
-  width: 100%; max-width: 430px;
+  background: var(--surface); width: 100%; max-width: 430px;
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   padding: 20px 20px calc(20px + var(--safe-bottom));
   animation: slideUp 0.3s var(--ease); max-height: 90dvh; overflow-y: auto;
@@ -235,15 +235,9 @@ body {
 .modal--company {
   background: #E8F2F8;
 }
-.modal--personal {
-  background: #FFF8E6;
-}
 @media (prefers-color-scheme: dark) {
   .modal--company {
     background: #1A2530;
-  }
-  .modal--personal {
-    background: #2A2620;
   }
 }
 @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
