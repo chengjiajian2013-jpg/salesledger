@@ -198,11 +198,17 @@ function updateProfitPreview() {
 }
 
 // ═══ 佣金比例步进器 ═══
+let adjusting = false;
 function adjustRate(delta) {
+  if (adjusting) return; // 防止连续点击卡顿
+  adjusting = true;
+
   const current = parseFloat(el.inputRate.value) || 0;
   const next = Math.min(100, Math.max(0, Math.round((current + delta) * 10) / 10));
   el.inputRate.value = next.toFixed(1).replace(/\.0$/, '');
   updateProfitPreview();
+
+  setTimeout(() => { adjusting = false; }, 100);
 }
 
 // ═══ 渠道切换 ═══
