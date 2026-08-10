@@ -226,17 +226,25 @@ body {
 }
 .modal-overlay--open { display: flex; }
 .modal {
-  background: var(--surface); width: 100%; max-width: 430px;
+  width: 100%; max-width: 430px;
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   padding: 20px 20px calc(20px + var(--safe-bottom));
   animation: slideUp 0.3s var(--ease); max-height: 90dvh; overflow-y: auto;
   transition: background 0.3s var(--ease);
 }
 .modal--company {
-  background: linear-gradient(to bottom, rgba(74, 125, 158, 0.08) 0%, var(--surface) 120px);
+  background: #E8F2F8;
 }
 .modal--personal {
-  background: linear-gradient(to bottom, rgba(184, 134, 11, 0.08) 0%, var(--surface) 120px);
+  background: #FFF8E6;
+}
+@media (prefers-color-scheme: dark) {
+  .modal--company {
+    background: #1A2530;
+  }
+  .modal--personal {
+    background: #2A2620;
+  }
 }
 @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 .modal__handle { width: 36px; height: 4px; background: var(--border-strong); border-radius: 2px; margin: 0 auto 18px; }
