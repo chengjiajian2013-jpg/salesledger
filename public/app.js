@@ -912,6 +912,16 @@ function loadAIView() {
     }, 100);
     aiFormToggle.textContent = '收起';
   }
+
+  // 设置侧边栏初始状态为隐藏
+  const aiSidebar = document.getElementById('aiSidebar');
+  const aiMain = document.querySelector('.ai-main');
+  const aiToggleSidebar = document.getElementById('aiToggleSidebar');
+  if (aiSidebar && aiMain && aiToggleSidebar) {
+    aiSidebar.classList.add('ai-sidebar--collapsed');
+    aiMain.classList.add('ai-main--expanded');
+    aiToggleSidebar.textContent = '☰';
+  }
 }
 
 // 渲染对话列表
@@ -1043,7 +1053,7 @@ async function handleSendMessage() {
 const aiToggleSidebar = document.getElementById('aiToggleSidebar');
 const aiSidebar = document.getElementById('aiSidebar');
 const aiMain = document.querySelector('.ai-main');
-let sidebarCollapsed = false;
+let sidebarCollapsed = true;  // 初始状态为隐藏
 
 if (aiToggleSidebar) {
   aiToggleSidebar.addEventListener('click', () => {
@@ -1387,18 +1397,36 @@ if (formSubmit) {
       }
       question += `。帮我算：1.我的利润是多少；2.客户需要付多少钱`;
     } else {
-      // 公司交易：计算给公司的钱（全额），利润月末统一结算
-      const toCompany = quota * price;
-      question = `公司交易：${quota}额度，${(price * 100).toFixed(0)}折`;
+      // 公司交易：计算客户实际支付和给公司的钱
+      question = `公司交易：额度${quota}元，${(price * 100).toFixed(0)}折`;
+
+      // 添加货物明细（每个货物的折扣计算）
       if (formData.goods.length > 1) {
-        question += `，实际货物${totalGoods}元（由${formData.goods.join('+')}组成）`;
+        question += `，实际货物总计${totalGoods}元，包括：`;
+        const goodsDetails = formData.goods.map(g => `${g}元×${price}=${(g * price).toFixed(2)}元`).join('，');
+        question += goodsDetails;
       } else {
-        question += `，实际货物${totalGoods}元`;
+        question += `，实际货物${totalGoods}元×${price}=${(totalGoods * price).toFixed(2)}元`;
       }
+
+      // 计算客户实际支付
+      const customerPay = totalGoods * price;
+      question += `。客户实际支付：${customerPay.toFixed(2)}元`;
+
+      // 如果超额，说明公司承担的部分和给公司的钱
       if (excess > 0) {
-        question += `，超出${excess}元由公司承担折损`;
+        const companySubsidy = excess * (1 - price);  // 公司承担超额部分的折损
+        question += `。超额${excess}元，公司承担折损${companySubsidy.toFixed(2)}元（${excess}×${(1 - price).toFixed(2)}）`;
+
+        // 给公司的钱 = 客户实际支付 - 自己垫付的超额部分
+        const toCompany = customerPay - excess;
+        question += `。给公司的钱：${toCompany.toFixed(2)}元（客户支付${customerPay.toFixed(2)}元 - 自己垫付${excess}元）`;
+      } else {
+        // 没有超额，给公司的钱就是客户实际支付
+        question += `。给公司的钱：${customerPay.toFixed(2)}元`;
       }
-      question += `。需要给公司的钱：${toCompany.toFixed(2)}元。利润月末统一结算，本次只记录收款金额`;
+
+      question += `。请帮我整理收款明细，方便我收钱`;
     }
 
     // 填充到输入框并发送
