@@ -922,6 +922,12 @@ function loadAIView() {
     aiMain.classList.add('ai-main--expanded');
     aiToggleSidebar.textContent = '☰';
   }
+
+  // 默认选中个人交易
+  const personalBtn = document.querySelector('.ai-form__btn[data-field="type"][data-value="personal"]');
+  if (personalBtn && !formData.type) {
+    personalBtn.click();
+  }
 }
 
 // 渲染对话列表
@@ -1413,14 +1419,11 @@ if (formSubmit) {
       const customerPay = totalGoods * price;
       question += `。客户实际支付：${customerPay.toFixed(2)}元`;
 
-      // 如果超额，说明公司承担的部分和给公司的钱
+      // 如果超额，说明给公司的钱
       if (excess > 0) {
-        const companySubsidy = excess * (1 - price);  // 公司承担超额部分的折损
-        question += `。超额${excess}元，公司承担折损${companySubsidy.toFixed(2)}元（${excess}×${(1 - price).toFixed(2)}）`;
-
         // 给公司的钱 = 客户实际支付 - 自己垫付的超额部分
         const toCompany = customerPay - excess;
-        question += `。给公司的钱：${toCompany.toFixed(2)}元（客户支付${customerPay.toFixed(2)}元 - 自己垫付${excess}元）`;
+        question += `。超额${excess}元由我自己垫付。给公司的钱：${toCompany.toFixed(2)}元（客户支付${customerPay.toFixed(2)}元 - 自己垫付${excess}元）`;
       } else {
         // 没有超额，给公司的钱就是客户实际支付
         question += `。给公司的钱：${customerPay.toFixed(2)}元`;
