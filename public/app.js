@@ -902,6 +902,9 @@ function loadAIView() {
   renderChatList();
   renderMessages();
 
+  // 加载当前对话的暂存数据
+  loadSavedFormData();
+
   // 确保表单展开
   const aiFormContent = document.getElementById('aiFormContent');
   const aiFormToggle = document.getElementById('aiFormToggle');
@@ -1109,11 +1112,18 @@ function loadSavedFormData() {
       // 恢复交易类型
       if (data.type) {
         formData.type = data.type;
-        const btn = document.querySelector(`.ai-form__btn[data-value="${data.type}"]`);
+        // 先清除所有交易类型按钮的active状态
+        document.querySelectorAll('.ai-form__btn[data-field="type"]').forEach(b => {
+          b.classList.remove('ai-form__btn--active');
+        });
+        // 设置正确的按钮为active
+        const btn = document.querySelector(`.ai-form__btn[data-field="type"][data-value="${data.type}"]`);
         if (btn) {
           btn.classList.add('ai-form__btn--active');
           if (data.type === 'personal') {
             formCostGroup.style.display = 'block';
+          } else {
+            formCostGroup.style.display = 'none';
           }
         }
       }
@@ -1135,15 +1145,25 @@ function loadSavedFormData() {
         }
 
         // 重新创建货物项
-        data.goods.forEach((amount, index) => {
+        data.goods.forEach((good, index) => {
           const item = document.createElement('div');
           item.className = 'ai-form__quota-item';
           item.dataset.index = index;
+
+          // 支持旧数据格式（直接是数字）和新数据格式（包含name和amount）
+          const goodName = typeof good === 'object' ? (good.name || '') : '';
+          const goodAmount = typeof good === 'object' ? good.amount : good;
+
           item.innerHTML = `
-            <input type="number" class="ai-form__input goods-amount" placeholder="货物金额（元）" style="flex:1;" value="${amount}">
+            <input type="text" class="ai-form__input goods-name" placeholder="商品名称" style="width:80px;flex-shrink:0;" value="${goodName}">
+            <input type="text" inputmode="decimal" class="ai-form__input goods-amount" placeholder="货物金额（元）" style="flex:1;" data-number-only value="${goodAmount}">
             <button type="button" class="ai-form__btn-remove" style="width:32px;height:38px;border:1px solid var(--danger);color:var(--danger);background:var(--surface);border-radius:var(--radius-sm);cursor:pointer;">−</button>
           `;
           goodsItems.appendChild(item);
+
+          // 为新添加的货物金额输入框添加数字限制
+          const amountInput = item.querySelector('.goods-amount');
+          if (amountInput) restrictNumberInput(amountInput);
 
           // 绑定删除按钮
           item.querySelector('.ai-form__btn-remove').addEventListener('click', () => {
@@ -1327,12 +1347,17 @@ if (formSave) {
       return;
     }
 
-    // 收集货物明细
+    // 收集货物明细（包含名称和金额）
     const goods = [];
-    goodsItems.querySelectorAll('.goods-amount').forEach(input => {
-      const val = parseFloat(input.value);
-      if (val && val > 0) {
-        goods.push(val);
+    goodsItems.querySelectorAll('.ai-form__quota-item').forEach(item => {
+      const nameInput = item.querySelector('.goods-name');
+      const amountInput = item.querySelector('.goods-amount');
+      const amount = parseFloat(amountInput.value);
+      if (amount && amount > 0) {
+        goods.push({
+          name: nameInput ? nameInput.value : '',
+          amount: amount
+        });
       }
     });
 
