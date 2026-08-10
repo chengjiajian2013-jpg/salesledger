@@ -5,6 +5,7 @@ import { handleTransactions, handleTransactionItem, handleOptions } from './tran
 import { handleSummary } from './summary.js';
 import { handleParse } from './parse.js';
 import { handleLogin, requireAuth } from './auth.js';
+import { handleAIChat } from './ai.js';
 import { SCHEMA_STATEMENTS } from './schema.js';
 
 // 单例：确保只初始化一次
@@ -93,6 +94,8 @@ export default {
             response = await handleOptions(env);
           } else if (path === '/api/v1/parse' && method === 'POST') {
             response = await handleParse(request, env);
+          } else if (path === '/api/v1/ai/chat' && method === 'POST') {
+            response = await handleAIChat(request, env);
           } else {
             response = jsonError('RESOURCE_NOT_FOUND', '接口不存在: ' + path, 404);
           }
