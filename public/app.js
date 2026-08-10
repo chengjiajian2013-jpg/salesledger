@@ -52,11 +52,17 @@ if (!isAuthenticated()) {
   async function attemptLogin() {
     if (password.length !== MAX_LENGTH) return;
 
+    // 显示加载动画
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    loadingOverlay.classList.add('active');
+
     try {
       await login(password);
       // 登录成功，刷新页面进入应用
       window.location.reload();
     } catch (err) {
+      // 隐藏加载动画
+      loadingOverlay.classList.remove('active');
       showError('密码错误');
     }
   }
