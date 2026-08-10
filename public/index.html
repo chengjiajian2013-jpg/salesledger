@@ -93,12 +93,6 @@ body {
   transition: all var(--transition);
 }
 .seller-tab--active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
-.seller-tab[data-seller="company"].seller-tab--active {
-  border-left: 3px solid var(--info);
-}
-.seller-tab[data-seller="personal"].seller-tab--active {
-  border-left: 3px solid var(--gold);
-}
 
 /* ═══ VIEW TABS (交易明细 / 月度统计) ═══ */
 .view-tabs {
@@ -236,33 +230,17 @@ body {
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   padding: 20px 20px calc(20px + var(--safe-bottom));
   animation: slideUp 0.3s var(--ease); max-height: 90dvh; overflow-y: auto;
+  transition: background 0.3s var(--ease);
+}
+.modal--company {
+  background: linear-gradient(to bottom, rgba(74, 125, 158, 0.08) 0%, var(--surface) 120px);
+}
+.modal--personal {
+  background: linear-gradient(to bottom, rgba(184, 134, 11, 0.08) 0%, var(--surface) 120px);
 }
 @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 .modal__handle { width: 36px; height: 4px; background: var(--border-strong); border-radius: 2px; margin: 0 auto 18px; }
 .modal__title { font-family: var(--font-serif); font-size: 1.1rem; font-weight: 600; text-align: center; margin-bottom: 18px; }
-
-/* Modal seller indicator */
-.modal__seller-indicator {
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  margin-bottom: 16px; padding: 10px 16px;
-  background: var(--surface-2); border-radius: var(--radius-sm);
-}
-.modal__seller-label {
-  font-size: 0.75rem; color: var(--text-3); font-weight: 500;
-}
-.modal__seller-badge {
-  font-size: 0.8rem; font-weight: 700; padding: 4px 12px;
-  border-radius: 8px; letter-spacing: 0.02em;
-  transition: all 0.3s var(--ease);
-}
-.modal__seller-badge--company {
-  background: var(--info-soft); color: var(--info);
-  border: 2px solid var(--info);
-}
-.modal__seller-badge--personal {
-  background: var(--gold-soft); color: var(--gold-text);
-  border: 2px solid var(--gold);
-}
 
 /* ═══ FORM ═══ */
 .form-field { margin-bottom: 14px; }
@@ -795,16 +773,9 @@ body {
 
   <!-- ═══ MODAL ═══ -->
   <div class="modal-overlay" id="modalOverlay">
-    <div class="modal">
+    <div class="modal" id="modal">
       <div class="modal__handle"></div>
       <div class="modal__title" id="modalTitle">记一笔</div>
-
-      <!-- 当前记账身份标识 -->
-      <div class="modal__seller-indicator" id="modalSellerIndicator">
-        <span class="modal__seller-label">记账身份：</span>
-        <span class="modal__seller-badge" id="modalSellerBadge">公司</span>
-      </div>
-
       <form id="txnForm" novalidate>
 
         <!-- 智能解析入口（默认折叠，点击展开） -->
