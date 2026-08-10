@@ -901,6 +901,17 @@ function loadAIView() {
 
   renderChatList();
   renderMessages();
+
+  // 确保表单展开
+  const aiFormContent = document.getElementById('aiFormContent');
+  const aiFormToggle = document.getElementById('aiFormToggle');
+  if (aiFormContent && aiFormToggle) {
+    aiFormContent.classList.remove('ai-form__content--collapsed');
+    setTimeout(() => {
+      aiFormContent.style.maxHeight = aiFormContent.scrollHeight + 'px';
+    }, 100);
+    aiFormToggle.textContent = '收起';
+  }
 }
 
 // 渲染对话列表
@@ -1160,9 +1171,13 @@ if (aiFormToggle && aiFormContent) {
     }
   });
 
-  // 初始化高度
+  // 初始化：默认展开状态
   if (formExpanded) {
-    aiFormContent.style.maxHeight = aiFormContent.scrollHeight + 'px';
+    aiFormContent.classList.remove('ai-form__content--collapsed');
+    setTimeout(() => {
+      aiFormContent.style.maxHeight = aiFormContent.scrollHeight + 'px';
+    }, 0);
+    aiFormToggle.textContent = '收起';
   }
 }
 
@@ -1175,8 +1190,23 @@ function updateTotalGoods() {
       total += val;
     }
   });
+
   if (total > 0) {
-    totalGoodsDisplay.textContent = `(总计: ${total.toFixed(0)}元)`;
+    let displayText = `(总计: ${total.toFixed(0)}元`;
+
+    // 计算差额（额度总计 - 实际货物总计）
+    const quota = parseFloat(formQuota.value);
+    if (quota && quota > 0) {
+      const diff = quota - total;
+      if (diff > 0) {
+        displayText += ` -${diff.toFixed(0)}元`;
+      } else if (diff < 0) {
+        displayText += ` +${Math.abs(diff).toFixed(0)}元`;
+      }
+    }
+
+    displayText += ')';
+    totalGoodsDisplay.textContent = displayText;
   } else {
     totalGoodsDisplay.textContent = '';
   }
@@ -1188,6 +1218,13 @@ if (goodsItems) {
     if (e.target.classList.contains('goods-amount')) {
       updateTotalGoods();
     }
+  });
+}
+
+// 监听额度总计输入变化
+if (formQuota) {
+  formQuota.addEventListener('input', () => {
+    updateTotalGoods();
   });
 }
 
