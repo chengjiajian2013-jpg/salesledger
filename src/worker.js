@@ -6,6 +6,16 @@ import { handleSummary } from './summary.js';
 import { handleParse } from './parse.js';
 import { handleLogin, requireAuth } from './auth.js';
 import { handleAIChat } from './ai.js';
+import {
+  handleGetChats,
+  handleCreateChat,
+  handleGetChat,
+  handleUpdateChat,
+  handleDeleteChat,
+  handleAddMessage,
+  handleSaveFormData,
+  handleGetFormData,
+} from './aiChats.js';
 import { SCHEMA_STATEMENTS } from './schema.js';
 
 // 单例：确保只初始化一次
@@ -96,6 +106,28 @@ export default {
             response = await handleParse(request, env);
           } else if (path === '/api/v1/ai/chat' && method === 'POST') {
             response = await handleAIChat(request, env);
+          } else if (path === '/api/v1/ai/chats' && method === 'GET') {
+            response = await handleGetChats(request, env);
+          } else if (path === '/api/v1/ai/chats' && method === 'POST') {
+            response = await handleCreateChat(request, env);
+          } else if (path.match(/^\/api\/v1\/ai\/chats\/[^\/]+$/) && method === 'GET') {
+            const chatId = path.split('/').pop();
+            response = await handleGetChat(request, env, chatId);
+          } else if (path.match(/^\/api\/v1\/ai\/chats\/[^\/]+$/) && method === 'PATCH') {
+            const chatId = path.split('/').pop();
+            response = await handleUpdateChat(request, env, chatId);
+          } else if (path.match(/^\/api\/v1\/ai\/chats\/[^\/]+$/) && method === 'DELETE') {
+            const chatId = path.split('/').pop();
+            response = await handleDeleteChat(request, env, chatId);
+          } else if (path.match(/^\/api\/v1\/ai\/chats\/[^\/]+\/messages$/) && method === 'POST') {
+            const chatId = path.split('/')[5];
+            response = await handleAddMessage(request, env, chatId);
+          } else if (path.match(/^\/api\/v1\/ai\/chats\/[^\/]+\/form-data$/) && method === 'PUT') {
+            const chatId = path.split('/')[5];
+            response = await handleSaveFormData(request, env, chatId);
+          } else if (path.match(/^\/api\/v1\/ai\/chats\/[^\/]+\/form-data$/) && method === 'GET') {
+            const chatId = path.split('/')[5];
+            response = await handleGetFormData(request, env, chatId);
           } else {
             response = jsonError('RESOURCE_NOT_FOUND', '接口不存在: ' + path, 404);
           }

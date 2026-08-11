@@ -3,15 +3,15 @@
 
 export const COMMISSION_DEFAULTS = {
   company: {
-    quota:    { label: '额度', defaultRate: 0.02 },
+    quota:    { label: '额度', defaultRate: 0.02 },  // 公司2%
     direct:   { label: '直款', defaultRate: 0.10 },
     recovery: { label: '回收', defaultRate: 0.40 },
     other:    { label: '其他', defaultRate: 0 },
   },
   personal: {
-    quota:    { label: '额度', defaultRate: 0.02 },
+    quota:    { label: '额度', defaultRate: 0.09 },  // 个人9% (0.89-0.8)
     direct:   { label: '直款', defaultRate: 1.00 },
-    recovery: { label: '回收', defaultRate: 0.40 },
+    recovery: { label: '回收', defaultRate: 1.00 },  // 个人回收100%
     other:    { label: '其他', defaultRate: 0 },
   },
 };
