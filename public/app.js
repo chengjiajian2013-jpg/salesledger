@@ -1024,11 +1024,13 @@ async function loadAIView() {
         aiFormContent.style.maxHeight = aiFormContent.scrollHeight + 'px';
       }, 100);
       aiFormToggle.textContent = '收起';
+      formExpanded = true;  // 同步状态变量
     } else {
       // 已有消息或已结束：收起表单
       aiFormContent.style.maxHeight = '0';
       aiFormContent.classList.add('ai-form__content--collapsed');
       aiFormToggle.textContent = '展开';
+      formExpanded = false;  // 同步状态变量
     }
   }
 
