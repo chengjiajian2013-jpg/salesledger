@@ -79,6 +79,10 @@ body {
   display: flex; align-items: center; justify-content: space-between;
 }
 .header__title { font-family: var(--font-serif); font-size: 1.15rem; font-weight: 600; letter-spacing: 0.01em; }
+.header__monthly-total {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 0.85rem;
+}
 .header__subtitle { font-size: 0.72rem; color: var(--text-3); margin-bottom: 10px; letter-spacing: 0.02em; }
 
 /* ═══ SELLER TABS ═══ */
@@ -900,6 +904,10 @@ body {
   <header class="header">
     <div class="header__top">
       <div class="header__title">Joeyzou记账本</div>
+      <div class="header__monthly-total" id="headerMonthlyTotal">
+        <span style="font-size: 0.75rem; color: var(--text-3);">当月总计：</span>
+        <span style="font-weight: 700; color: var(--gold);">¥0</span>
+      </div>
     </div>
     <div class="view-tabs" id="viewTabs">
       <button class="view-tab view-tab--active" data-view="transactions">交易明细</button>

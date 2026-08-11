@@ -118,6 +118,7 @@ function initApp() {
 // ═══ DOM ═══
 const $ = (s) => document.querySelector(s);
 const el = {
+  headerMonthlyTotal: $('#headerMonthlyTotal'),
   statsGrid: $('#statsGrid'),
   sellerTabs: $('#sellerTabs'),
   viewTabs: $('#viewTabs'),
@@ -510,9 +511,46 @@ async function loadSummary() {
     const data = res.data || res;
     setState({ summary: data });
     renderSummary(data);
+    updateHeaderMonthlyTotal(); // 更新header的当月总计
   } catch (e) {
     console.error('[Summary]', e);
     showToast('统计数据加载失败', 'error');
+  }
+}
+
+// 更新header的当月总计（公司+个人）
+async function updateHeaderMonthlyTotal() {
+  if (!el.headerMonthlyTotal) return;
+
+  try {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const startDate = `${year}-${month}-01`;
+    const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+    const endDate = `${year}-${month}-${lastDay}`;
+
+    // 获取公司和个人的当月统计
+    const [companyRes, personalRes] = await Promise.all([
+      api.getSummary({ startDate, endDate, seller: 'company' }),
+      api.getSummary({ startDate, endDate, seller: 'personal' })
+    ]);
+
+    const companyData = companyRes.data || companyRes;
+    const personalData = personalRes.data || personalRes;
+
+    const BASE_SALARY = 8000; // 公司底薪
+    const companyTotal = (companyData.profit || 0) + BASE_SALARY;
+    const personalTotal = personalData.profit || 0;
+    const monthlyTotal = companyTotal + personalTotal;
+
+    // 更新显示
+    const valueSpan = el.headerMonthlyTotal.querySelector('span:last-child');
+    if (valueSpan) {
+      valueSpan.textContent = `¥${monthlyTotal.toFixed(0)}`;
+    }
+  } catch (e) {
+    console.error('[HeaderMonthlyTotal]', e);
   }
 }
 
@@ -534,6 +572,7 @@ async function loadTransactions() {
 
 async function refreshAll() {
   await Promise.all([loadSummary(), loadTransactions()]);
+  updateHeaderMonthlyTotal(); // 同时更新header的当月总计
 }
 
 // ═══ 月度统计 ═══
