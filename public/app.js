@@ -2071,21 +2071,18 @@ if (aiRecordBtn) {
       console.log('从表单数据获取的货物:', goodsList);
     }
 
+    // 交易类型必须从AI回复中提取，不使用表单数据的type
+    const typeFromAI = parseTransactionTypeFromAI(lastAssistantMsg.content);
+    console.log('AI回复中的交易类型:', typeFromAI);
+
     if (savedFormData) {
-      // 使用数据库中的表单数据
+      // 使用数据库中的表单数据（不包括type）
       formInfo = {
-        type: savedFormData.type || 'personal',
-        quota: parseFloat(savedFormData.quota) || result.quota || 0,  // 优先用表单数据，其次用AI解析的
+        type: typeFromAI || 'personal',  // 完全依赖AI回复
+        quota: parseFloat(savedFormData.quota) || result.quota || 0,
         price: parseFloat(savedFormData.price) || 0,
         cost: parseFloat(savedFormData.cost) || 0,
       };
-
-      // 但是交易类型要从AI回复中提取（优先级更高）
-      const typeFromAI = parseTransactionTypeFromAI(lastAssistantMsg.content);
-      console.log('AI回复中的交易类型:', typeFromAI);
-      if (typeFromAI) {
-        formInfo.type = typeFromAI;
-      }
     } else {
       // 兜底：从对话历史中解析
       const firstUserMsg = chat.messages.find(m => m.role === 'user');
@@ -2098,8 +2095,7 @@ if (aiRecordBtn) {
         formInfo.quota = result.quota;
       }
 
-      // 交易类型也从AI回复中提取
-      const typeFromAI = parseTransactionTypeFromAI(lastAssistantMsg.content);
+      // 交易类型强制使用AI回复
       if (typeFromAI && formInfo) {
         formInfo.type = typeFromAI;
       }
