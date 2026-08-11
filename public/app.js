@@ -908,18 +908,26 @@ function bindEvents() {
   el.rateMinus.addEventListener('click', () => adjustRate(-0.5));
   el.ratePlus.addEventListener('click', () => adjustRate(0.5));
 
-  // 智能解析
-  el.parseToggle.addEventListener('click', () => {
-    const willOpen = el.parseBody.style.display === 'none';
-    toggleParse(true);
-    if (willOpen) setTimeout(() => el.parseInput.focus(), 250);
-  });
-  el.parseBtn.addEventListener('click', runParse);
-  el.parseClear.addEventListener('click', resetParse);
-  // 解析框内 Cmd/Ctrl+Enter 快速解析
-  el.parseInput.addEventListener('keydown', (e) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') runParse();
-  });
+  // 智能解析（已移除，保留空检查避免错误）
+  if (el.parseToggle) {
+    el.parseToggle.addEventListener('click', () => {
+      const willOpen = el.parseBody.style.display === 'none';
+      toggleParse(true);
+      if (willOpen) setTimeout(() => el.parseInput.focus(), 250);
+    });
+  }
+  if (el.parseBtn) {
+    el.parseBtn.addEventListener('click', runParse);
+  }
+  if (el.parseClear) {
+    el.parseClear.addEventListener('click', resetParse);
+  }
+  if (el.parseInput) {
+    // 解析框内 Cmd/Ctrl+Enter 快速解析
+    el.parseInput.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') runParse();
+    });
+  }
 
   el.txnForm.addEventListener('submit', handleSubmit);
 
