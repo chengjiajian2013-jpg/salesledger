@@ -6,7 +6,7 @@ import { COMMISSION_DEFAULTS, calcProfit, formatRate } from './modules/commissio
 import { formatCurrency, formatDate, todayStr, escapeHtml, capitalizeBrand } from './modules/format.js';
 import { isAuthenticated, login } from './modules/auth.js';
 import { callAI } from './modules/ai.js';
-import { getAllChats, createChat, getChat, addMessage, deleteChat, getChatMessages } from './modules/aiStorage.js';
+import { getAllChats, createChat, getChat, addMessage, deleteChat, getChatMessages, updateChat, saveFormData, getFormData } from './modules/aiStorageApi.js';
 
 // ═══ 认证检查 ═══
 const loginPage = document.getElementById('loginPage');
@@ -916,6 +916,11 @@ function bindEvents() {
       handleSendMessage();
     }
   });
+
+  // 输入框内容变化时保存
+  el.aiInput.addEventListener('input', () => {
+    saveCurrentFormData();
+  });
 }
 
 // ═══ 应用启动 ═══
@@ -940,32 +945,33 @@ document.addEventListener('DOMContentLoaded', startApp);
 let currentChatId = null;
 
 // 加载AI视图
-function loadAIView() {
-  const chats = getAllChats();
+async function loadAIView() {
+  const chats = await getAllChats();
 
   // 如果没有对话，创建第一个
   if (chats.length === 0) {
-    const newChat = createChat();
+    const newChat = await createChat();
     currentChatId = newChat.id;
   } else if (!currentChatId) {
     // 默认选中第一个对话
     currentChatId = chats[0].id;
   }
 
-  renderChatList();
-  renderMessages();
+  await renderChatList();
+  await renderMessages();
 
   // 加载当前对话的暂存数据
-  loadSavedFormData();
+  await loadSavedFormData();
 
   // 只在对话没有消息时展开表单（新对话）
   const aiFormContent = document.getElementById('aiFormContent');
   const aiFormToggle = document.getElementById('aiFormToggle');
-  const chat = currentChatId ? getChat(currentChatId) : null;
+  const chat = currentChatId ? await getChat(currentChatId) : null;
   const hasMessages = chat && chat.messages && chat.messages.length > 0;
+  const isClosed = chat && chat.status === 'closed';
 
   if (aiFormContent && aiFormToggle) {
-    if (!hasMessages && !chat?.ended) {
+    if (!hasMessages && !isClosed) {
       // 新对话且未结束：展开表单
       aiFormContent.classList.remove('ai-form__content--collapsed');
       setTimeout(() => {
@@ -977,6 +983,16 @@ function loadAIView() {
       aiFormContent.style.maxHeight = '0';
       aiFormContent.classList.add('ai-form__content--collapsed');
       aiFormToggle.textContent = '展开';
+    }
+  }
+
+  // 如果对话已关闭，隐藏输入区域，只显示录入按钮
+  const aiInputContainer = document.querySelector('.ai-input-container');
+  if (aiInputContainer) {
+    if (isClosed) {
+      aiInputContainer.style.display = 'none';
+    } else {
+      aiInputContainer.style.display = 'flex';
     }
   }
 
@@ -998,8 +1014,8 @@ function loadAIView() {
 }
 
 // 渲染对话列表
-function renderChatList() {
-  const chats = getAllChats();
+async function renderChatList() {
+  const chats = await getAllChats();
 
   if (chats.length === 0) {
     el.aiChatList.innerHTML = '<div style="text-align:center;color:var(--text-3);font-size:0.75rem;padding:20px;">暂无对话</div>';
@@ -1008,10 +1024,10 @@ function renderChatList() {
 
   el.aiChatList.innerHTML = chats.map(chat => {
     const active = chat.id === currentChatId ? ' ai-chat-item--active' : '';
-    const endedIcon = chat.ended ? ' ✅' : '';
+    const closedIcon = chat.status === 'closed' ? ' ✅' : '';
     return `
       <div class="ai-chat-item${active}" data-id="${chat.id}">
-        ${escapeHtml(chat.title)}${endedIcon}
+        ${escapeHtml(chat.title)}${closedIcon}
         <button class="ai-chat-item__delete" data-id="${chat.id}" title="删除">×</button>
       </div>
     `;
@@ -1019,36 +1035,36 @@ function renderChatList() {
 
   // 绑定点击事件
   el.aiChatList.querySelectorAll('.ai-chat-item').forEach(item => {
-    item.addEventListener('click', (e) => {
+    item.addEventListener('click', async (e) => {
       if (!e.target.classList.contains('ai-chat-item__delete')) {
         currentChatId = item.dataset.id;
-        renderChatList();
-        renderMessages();
-        loadSavedFormData(); // 切换对话时加载暂存数据
+        await renderChatList();
+        await renderMessages();
+        await loadSavedFormData(); // 切换对话时加载暂存数据
       }
     });
   });
 
   // 绑定删除事件
   el.aiChatList.querySelectorAll('.ai-chat-item__delete').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', async (e) => {
       e.stopPropagation();
       const id = btn.dataset.id;
       if (confirm('确定删除这个对话？')) {
-        deleteChat(id);
+        await deleteChat(id);
         if (currentChatId === id) {
-          const chats = getAllChats();
+          const chats = await getAllChats();
           currentChatId = chats.length > 0 ? chats[0].id : null;
         }
-        renderChatList();
-        renderMessages();
+        await renderChatList();
+        await renderMessages();
       }
     });
   });
 }
 
 // 渲染消息
-function renderMessages() {
+async function renderMessages() {
   if (!currentChatId) {
     el.aiMessages.innerHTML = '<div style="text-align:center;color:var(--text-3);padding:40px;">选择或创建一个对话开始</div>';
     // 隐藏录入按钮
@@ -1062,8 +1078,8 @@ function renderMessages() {
     return;
   }
 
-  const chat = getChat(currentChatId);
-  if (!chat || chat.messages.length === 0) {
+  const chat = await getChat(currentChatId);
+  if (!chat || !chat.messages || chat.messages.length === 0) {
     el.aiMessages.innerHTML = '<div style="text-align:center;color:var(--text-3);padding:40px;">输入你的问题，AI助手会帮你计算</div>';
     // 隐藏录入按钮
     if (el.aiRecordBar) el.aiRecordBar.style.display = 'none';
@@ -1077,8 +1093,8 @@ function renderMessages() {
   }
 
   // 检查对话是否已结束
-  const isEnded = chat.ended === true;
-  if (isEnded) {
+  const isClosed = chat.status === 'closed';
+  if (isClosed) {
     // 显示录入按钮
     if (el.aiRecordBar) el.aiRecordBar.style.display = 'block';
     // 隐藏输入区域和按钮
@@ -1126,11 +1142,11 @@ function renderMessages() {
 }
 
 // 新建对话
-function handleNewChat() {
-  const newChat = createChat();
+async function handleNewChat() {
+  const newChat = await createChat();
   currentChatId = newChat.id;
-  renderChatList();
-  renderMessages();
+  await renderChatList();
+  await renderMessages();
   el.aiInput.focus();
 }
 
@@ -1141,15 +1157,15 @@ async function handleSendMessage() {
 
   // 如果没有当前对话，创建一个
   if (!currentChatId) {
-    const newChat = createChat();
+    const newChat = await createChat();
     currentChatId = newChat.id;
-    renderChatList();
+    await renderChatList();
   }
 
   // 添加用户消息
-  addMessage(currentChatId, 'user', content);
+  await addMessage(currentChatId, 'user', content);
   el.aiInput.value = '';
-  renderMessages();
+  await renderMessages();
 
   // 禁用发送按钮
   el.aiSend.disabled = true;
@@ -1157,13 +1173,13 @@ async function handleSendMessage() {
 
   try {
     // 获取对话历史并调用AI
-    const messages = getChatMessages(currentChatId);
+    const messages = await getChatMessages(currentChatId);
     const response = await callAI(messages);
 
     // 添加AI回复
-    addMessage(currentChatId, 'assistant', response);
-    renderChatList(); // 更新列表（可能标题变了）
-    renderMessages();
+    await addMessage(currentChatId, 'assistant', response);
+    await renderChatList(); // 更新列表（可能标题变了）
+    await renderMessages();
   } catch (error) {
     console.error('AI调用失败:', error);
 
@@ -1232,77 +1248,104 @@ let formData = {
 let formExpanded = true;
 
 // 从localStorage加载暂存数据（按对话ID）
-function loadSavedFormData() {
+async function loadSavedFormData() {
   if (!currentChatId) return;
 
   try {
-    const key = `aiFormData_${currentChatId}`;
-    const saved = localStorage.getItem(key);
-    if (saved) {
-      const data = JSON.parse(saved);
+    const data = await getFormData(currentChatId);
+    if (!data) return;
 
-      // 恢复交易类型
-      if (data.type) {
-        formData.type = data.type;
-        // 先清除所有交易类型按钮的active状态
-        document.querySelectorAll('.ai-form__btn[data-field="type"]').forEach(b => {
-          b.classList.remove('ai-form__btn--active');
-        });
-        // 设置正确的按钮为active
-        const btn = document.querySelector(`.ai-form__btn[data-field="type"][data-value="${data.type}"]`);
-        if (btn) {
-          btn.classList.add('ai-form__btn--active');
-          if (data.type === 'personal') {
-            formCostGroup.style.display = 'block';
-          } else {
-            formCostGroup.style.display = 'none';
-          }
+    // 恢复交易类型
+    if (data.type) {
+      formData.type = data.type;
+      // 先清除所有交易类型按钮的active状态
+      document.querySelectorAll('.ai-form__btn[data-field="type"]').forEach(b => {
+        b.classList.remove('ai-form__btn--active');
+      });
+      // 设置正确的按钮为active
+      const btn = document.querySelector(`.ai-form__btn[data-field="type"][data-value="${data.type}"]`);
+      if (btn) {
+        btn.classList.add('ai-form__btn--active');
+        if (data.type === 'personal') {
+          formCostGroup.style.display = 'block';
+        } else {
+          formCostGroup.style.display = 'none';
         }
       }
+    }
 
-      // 恢复额度总计
-      if (data.quota) formQuota.value = data.quota;
+    // 恢复额度总计
+    if (data.quota) formQuota.value = data.quota;
 
-      // 恢复成本折扣
-      if (data.cost) formCost.value = data.cost;
+    // 恢复成本折扣
+    if (data.cost) formCost.value = data.cost;
 
-      // 恢复卖价折扣
-      if (data.price) formPrice.value = data.price;
+    // 恢复卖价折扣
+    if (data.price) formPrice.value = data.price;
 
-      // 恢复货物明细
-      if (data.goods && data.goods.length > 0) {
-        // 清空现有货物项
-        while (goodsItems.children.length > 0) {
-          goodsItems.removeChild(goodsItems.lastChild);
-        }
-
-        // 重新创建货物项
-        data.goods.forEach((good) => {
-          // 支持旧数据格式（直接是数字）和新数据格式（包含name和amount）
-          const goodName = typeof good === 'object' ? (good.name || '') : '';
-          const goodAmount = typeof good === 'object' ? good.amount : good;
-
-          const item = createGoodsItem(goodName, goodAmount);
-          goodsItems.appendChild(item);
-        });
-
-        updateTotalGoods();
+    // 恢复货物明细
+    if (data.goods && data.goods.length > 0) {
+      // 清空现有货物项
+      while (goodsItems.children.length > 0) {
+        goodsItems.removeChild(goodsItems.lastChild);
       }
 
-      // 恢复输入框内容
-      if (data.inputText && el.aiInput) {
-        el.aiInput.value = data.inputText;
-      }
+      // 重新创建货物项
+      data.goods.forEach((good) => {
+        // 支持旧数据格式（直接是数字）和新数据格式（包含name和amount）
+        const goodName = typeof good === 'object' ? (good.name || '') : '';
+        const goodAmount = typeof good === 'object' ? good.amount : good;
 
-      // 更新表单内容高度，防止按钮被裁剪
-      if (formExpanded && aiFormContent) {
-        setTimeout(() => {
-          aiFormContent.style.maxHeight = aiFormContent.scrollHeight + 'px';
-        }, 50);
-      }
+        const item = createGoodsItem(goodName, goodAmount);
+        goodsItems.appendChild(item);
+      });
+
+      updateTotalGoods();
+    }
+
+    // 恢复输入框内容
+    if (data.input_text && el.aiInput) {
+      el.aiInput.value = data.input_text;
+    }
+
+    // 更新表单内容高度，防止按钮被裁剪
+    if (formExpanded && aiFormContent) {
+      setTimeout(() => {
+        aiFormContent.style.maxHeight = aiFormContent.scrollHeight + 'px';
+      }, 50);
     }
   } catch (e) {
     console.error('加载暂存数据失败:', e);
+  }
+}
+
+// 保存表单数据到数据库
+async function saveCurrentFormData() {
+  if (!currentChatId) return;
+
+  try {
+    // 收集当前货物列表
+    const goods = [];
+    goodsItems.querySelectorAll('.ai-form__quota-item').forEach(item => {
+      const name = item.querySelector('.goods-name')?.value || '';
+      const amount = item.querySelector('.goods-amount')?.value || '';
+      if (name || amount) {
+        goods.push({ name, amount });
+      }
+    });
+
+    const formDataToSave = {
+      type: formData.type || 'personal',
+      quota: formQuota.value || '',
+      cost: formCost.value || '',
+      price: formPrice.value || '',
+      goods: goods,
+      input_text: el.aiInput.value.trim(),
+    };
+
+    await saveFormData(currentChatId, formDataToSave);
+  } catch (e) {
+    console.error('[saveCurrentFormData]', e);
   }
 }
 
@@ -1325,11 +1368,25 @@ function createGoodsItem(name = '', amount = '') {
   // 添加数字限制
   if (amountInput) restrictNumberInput(amountInput);
 
+  // 监听输入变化
+  if (nameInput) {
+    nameInput.addEventListener('input', () => {
+      saveCurrentFormData();
+    });
+  }
+  if (amountInput) {
+    amountInput.addEventListener('input', () => {
+      updateTotalGoods();
+      saveCurrentFormData();
+    });
+  }
+
   // 绑定删除按钮
   item.querySelector('.ai-form__btn-remove').addEventListener('click', () => {
     if (goodsItems.children.length > 1) {
       item.remove();
       updateTotalGoods();
+      saveCurrentFormData();
       // 更新表单高度
       if (formExpanded && aiFormContent) {
         aiFormContent.style.maxHeight = aiFormContent.scrollHeight + 'px';
@@ -1413,6 +1470,20 @@ if (goodsItems) {
 if (formQuota) {
   formQuota.addEventListener('input', () => {
     updateTotalGoods();
+    saveCurrentFormData();
+  });
+}
+
+// 监听成本和售价变化
+if (formCost) {
+  formCost.addEventListener('input', () => {
+    saveCurrentFormData();
+  });
+}
+
+if (formPrice) {
+  formPrice.addEventListener('input', () => {
+    saveCurrentFormData();
   });
 }
 
@@ -1528,6 +1599,9 @@ document.querySelectorAll('.ai-form__btn[data-field]').forEach(btn => {
         formCostGroup.style.display = 'none';
       }
     }
+
+    // 保存到数据库
+    saveCurrentFormData();
   });
 });
 
@@ -1679,14 +1753,14 @@ const aiRecordBar = document.getElementById('aiRecordBar');
 const aiRecordBtn = document.getElementById('aiRecordBtn');
 
 if (aiEndBtn) {
-  aiEndBtn.addEventListener('click', () => {
+  aiEndBtn.addEventListener('click', async () => {
     if (!currentChatId) {
       showToast('请先选择一个对话', 'error');
       return;
     }
 
-    const chat = getChat(currentChatId);
-    if (!chat || chat.messages.length === 0) {
+    const chat = await getChat(currentChatId);
+    if (!chat || !chat.messages || chat.messages.length === 0) {
       showToast('对话中没有内容', 'error');
       return;
     }
@@ -1696,21 +1770,28 @@ if (aiEndBtn) {
       return;
     }
 
-    // 标记对话为已结束
-    chat.ended = true;
-    localStorage.setItem(`chat_${currentChatId}`, JSON.stringify(chat));
+    try {
+      // 更新对话状态为已关闭
+      await updateChat(currentChatId, { status: 'closed' });
 
-    // 显示录入按钮
-    if (aiRecordBar) aiRecordBar.style.display = 'block';
+      // 显示录入按钮
+      if (aiRecordBar) aiRecordBar.style.display = 'block';
 
-    // 隐藏输入框和按钮
-    el.aiInput.style.display = 'none';
-    el.aiSend.style.display = 'none';
-    aiEndBtn.style.display = 'none';
-    const aiInputButtons = document.querySelector('.ai-input__buttons');
-    if (aiInputButtons) aiInputButtons.style.display = 'none';
+      // 隐藏输入框和按钮
+      el.aiInput.style.display = 'none';
+      el.aiSend.style.display = 'none';
+      aiEndBtn.style.display = 'none';
+      const aiInputButtons = document.querySelector('.ai-input__buttons');
+      if (aiInputButtons) aiInputButtons.style.display = 'none';
 
-    showToast('对话已结束，可以录入交易明细', 'info');
+      // 更新列表显示
+      await renderChatList();
+
+      showToast('对话已结束，可以录入交易明细', 'info');
+    } catch (error) {
+      console.error('结束对话失败:', error);
+      showToast('结束对话失败，请重试', 'error');
+    }
   });
 }
 
