@@ -79,6 +79,10 @@ body {
   display: flex; align-items: center; justify-content: space-between;
 }
 .header__title { font-family: var(--font-serif); font-size: 1.15rem; font-weight: 600; letter-spacing: 0.01em; }
+.header__monthly-total {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 0.85rem;
+}
 .header__subtitle { font-size: 0.72rem; color: var(--text-3); margin-bottom: 10px; letter-spacing: 0.02em; }
 
 /* ═══ SELLER TABS ═══ */
@@ -206,6 +210,196 @@ body {
 }
 .seller-badge--company { background: var(--info-soft); color: var(--info); }
 .seller-badge--personal { background: var(--gold-soft); color: var(--gold-text); }
+
+/* ═══ AI助手 ═══ */
+.ai-container {
+  display: flex; height: calc(100dvh - var(--header-h) - 88px - var(--safe-top) - var(--safe-bottom));
+  gap: 12px;
+  position: relative;
+}
+.ai-sidebar {
+  width: 140px; flex-shrink: 0;
+  display: flex; flex-direction: column; gap: 8px;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+.ai-sidebar--collapsed {
+  transform: translateX(-100%);
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: -1;
+}
+.ai-main--expanded {
+  margin-left: 0;
+}
+.ai-toggle-sidebar {
+  position: absolute; top: 8px; left: 8px; z-index: 10;
+  width: 36px; height: 36px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); background: var(--surface);
+  color: var(--text); font-size: 1rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s;
+}
+.ai-toggle-sidebar:hover { background: var(--gold-soft); border-color: var(--gold); color: var(--gold-text); }
+.ai-new-chat {
+  height: 44px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--gold-soft); color: var(--gold-text); font-weight: 600;
+  font-size: 0.85rem; cursor: pointer; transition: all 0.2s;
+}
+.ai-new-chat:hover { background: var(--gold); color: #fff; }
+.ai-chat-list {
+  flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;
+}
+.ai-chat-item {
+  padding: 10px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface); cursor: pointer; transition: all 0.2s;
+  font-size: 0.75rem; color: var(--text-2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  position: relative;
+}
+.ai-chat-item:hover { background: var(--surface-2); }
+.ai-chat-item--active { border-color: var(--gold); background: var(--gold-soft); color: var(--gold-text); }
+.ai-chat-item__delete {
+  position: absolute; top: 4px; right: 4px; width: 18px; height: 18px;
+  border: none; background: var(--danger-soft); color: var(--danger);
+  border-radius: 3px; font-size: 0.7rem; cursor: pointer;
+  opacity: 0; transition: opacity 0.2s;
+}
+.ai-chat-item:hover .ai-chat-item__delete { opacity: 1; }
+.ai-main {
+  flex: 1; display: flex; flex-direction: column; gap: 12px;
+}
+.ai-messages {
+  flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px;
+  padding: 12px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.ai-message {
+  padding: 10px 12px; border-radius: var(--radius-sm);
+  font-size: 0.85rem; line-height: 1.6;
+  max-width: 85%;
+}
+.ai-message--user {
+  background: var(--gold-soft); color: var(--text);
+  align-self: flex-end; margin-left: auto;
+}
+.ai-message--assistant {
+  background: var(--surface-2); color: var(--text);
+  align-self: flex-start;
+}
+.ai-message--error {
+  background: var(--danger-soft); color: var(--danger);
+  align-self: center; text-align: center; font-size: 0.75rem;
+}
+.ai-input-wrapper {
+  display: flex; gap: 8px; align-items: flex-end;
+}
+.ai-input {
+  flex: 1; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 10px 12px; font-family: inherit; font-size: 0.85rem;
+  background: var(--surface); color: var(--text); resize: none;
+  outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+}
+.ai-input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(184,134,11,0.10); }
+.ai-send {
+  height: 44px; padding: 0 20px; border: none; border-radius: var(--radius-sm);
+  background: var(--gold); color: #fff; font-weight: 600; font-size: 0.85rem;
+  cursor: pointer; transition: all 0.2s;
+}
+.ai-send:hover { background: var(--gold-line); }
+.ai-send:disabled {
+  background: var(--surface-3); color: var(--text-3); cursor: not-allowed;
+}
+/* AI交互式表单 */
+.ai-form {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: 12px 12px 12px 56px; /* 左边距增加，为按钮留空间 */
+  margin-bottom: 12px;
+  position: relative; /* 让内部绝对定位元素相对于表单定位 */
+}
+.ai-form__header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 12px;
+}
+.ai-form__title {
+  display: flex; align-items: center; gap: 8px; flex: 1;
+}
+.ai-form__toggle {
+  padding: 6px 12px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); background: var(--surface-2);
+  color: var(--text-2); font-size: 0.75rem; cursor: pointer;
+  transition: all 0.2s; font-weight: 500;
+}
+.ai-form__toggle:hover {
+  background: var(--surface-3); color: var(--text);
+}
+.ai-form__content {
+  transition: max-height 0.3s ease, opacity 0.3s ease;
+  overflow: hidden;
+}
+.ai-form__content--collapsed {
+  max-height: 0 !important;
+  opacity: 0;
+  margin: 0;
+}
+.ai-form__group {
+  margin-bottom: 12px;
+}
+.ai-form__row {
+  display: flex; gap: 12px; margin-bottom: 12px;
+}
+.ai-form__row .ai-form__group {
+  flex: 1; margin-bottom: 0;
+}
+.ai-form__label {
+  font-size: 0.75rem; color: var(--text-2); margin-bottom: 6px;
+  display: block; font-weight: 500;
+}
+.ai-form__buttons {
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+.ai-form__btn {
+  padding: 8px 14px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); background: var(--surface);
+  color: var(--text); font-size: 0.8rem; cursor: pointer;
+  transition: all 0.2s; font-weight: 500;
+}
+.ai-form__btn:hover { background: var(--surface-2); }
+.ai-form__btn--active {
+  border-color: var(--gold); background: var(--gold-soft);
+  color: var(--gold-text);
+}
+.ai-form__input {
+  width: 100%; height: 38px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 0 10px;
+  font-size: 0.85rem; background: var(--surface-2);
+  color: var(--text); outline: none; transition: all 0.2s;
+  font-family: var(--font-numeric);
+}
+.ai-form__input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(184,134,11,0.10); }
+.ai-form__actions {
+  display: flex; gap: 8px; margin-top: 8px;
+}
+.ai-form__submit {
+  flex: 1; height: 40px; border: none; border-radius: var(--radius-sm);
+  background: var(--gold); color: #fff; font-weight: 600;
+  font-size: 0.85rem; cursor: pointer; transition: all 0.2s;
+}
+.ai-form__submit:hover { background: var(--gold-line); }
+.ai-form__save {
+  height: 40px; padding: 0 16px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); background: var(--surface);
+  color: var(--text); font-weight: 600; font-size: 0.85rem;
+  cursor: pointer; transition: all 0.2s;
+}
+.ai-form__save:hover { background: var(--surface-2); border-color: var(--gold); }
+.ai-form__quota-item {
+  display: flex; gap: 6px; margin-bottom: 6px;
+}
+.ai-form__btn-remove:hover {
+  background: var(--danger-soft);
+}
+
 
 /* ═══ FAB & MODAL ═══ */
 .fab {
@@ -710,10 +904,15 @@ body {
   <header class="header">
     <div class="header__top">
       <div class="header__title">Joeyzou记账本</div>
+      <div class="header__monthly-total" id="headerMonthlyTotal">
+        <span style="font-size: 0.75rem; color: var(--text-3);">当月总计：</span>
+        <span style="font-weight: 700; color: var(--gold);">¥0</span>
+      </div>
     </div>
     <div class="view-tabs" id="viewTabs">
       <button class="view-tab view-tab--active" data-view="transactions">交易明细</button>
       <button class="view-tab" data-view="monthly">月度统计</button>
+      <button class="view-tab" data-view="ai">AI助手</button>
     </div>
     <div class="seller-tabs" id="sellerTabs">
       <button class="seller-tab seller-tab--active" data-seller="company">公司</button>
@@ -766,6 +965,77 @@ body {
         </div>
       </div>
       <div id="monthlyList"></div>
+    </div>
+
+    <!-- AI助手视图 -->
+    <div id="aiView" style="display:none;">
+      <div class="ai-container">
+        <button class="ai-toggle-sidebar" id="aiToggleSidebar" title="显示/隐藏对话列表">☰</button>
+        <div class="ai-sidebar" id="aiSidebar">
+          <button class="ai-new-chat" id="aiNewChat">+ 新建对话</button>
+          <div class="ai-chat-list" id="aiChatList"></div>
+        </div>
+        <div class="ai-main">
+          <!-- 交互式表单 -->
+          <div class="ai-form" id="aiForm" style="display:none;">
+            <div class="ai-form__header">
+              <div class="ai-form__title">
+                <div class="ai-form__buttons">
+                  <button type="button" class="ai-form__btn" data-field="type" data-value="personal">个人交易</button>
+                  <button type="button" class="ai-form__btn" data-field="type" data-value="company">公司交易</button>
+                </div>
+              </div>
+              <button type="button" class="ai-form__toggle" id="aiFormToggle">收起</button>
+            </div>
+
+            <div class="ai-form__content" id="aiFormContent">
+              <div class="ai-form__group">
+                <label class="ai-form__label">额度总计</label>
+                <input type="text" inputmode="decimal" class="ai-form__input" id="formQuota" placeholder="例：53000" data-number-only>
+              </div>
+
+              <div class="ai-form__row">
+                <div class="ai-form__group" id="formCostGroup" style="display:none;">
+                  <label class="ai-form__label">成本折扣</label>
+                  <input type="text" inputmode="decimal" class="ai-form__input" id="formCost" placeholder="例：0.82" data-number-only>
+                </div>
+
+                <div class="ai-form__group">
+                  <label class="ai-form__label">卖价折扣</label>
+                  <input type="text" inputmode="decimal" class="ai-form__input" id="formPrice" placeholder="例：0.88" data-number-only>
+                </div>
+              </div>
+
+              <div class="ai-form__group">
+                <label class="ai-form__label">实际货物金额（元） <span id="totalGoodsDisplay" style="color:var(--text-3);font-size:0.75rem;"></span></label>
+                <div id="goodsItems">
+                  <div class="ai-form__quota-item" data-index="0">
+                    <input type="text" class="ai-form__input goods-name" placeholder="商品名称" style="width:80px;flex-shrink:0;">
+                    <input type="text" inputmode="decimal" class="ai-form__input goods-amount" placeholder="货物金额（元）" style="flex:1;" data-number-only>
+                    <button type="button" class="ai-form__btn-remove" style="width:32px;height:38px;border:1px solid var(--danger);color:var(--danger);background:var(--surface);border-radius:var(--radius-sm);cursor:pointer;">−</button>
+                  </div>
+                </div>
+                <button type="button" id="addGoodsBtn" class="ai-form__btn" style="width:100%;margin-top:6px;">+ 添加货物</button>
+              </div>
+
+              <div class="ai-form__actions">
+                <button type="button" class="ai-form__save" id="formSave">暂存</button>
+                <button class="ai-form__submit" id="formSubmit">立即计算</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="ai-messages" id="aiMessages">
+            <div style="text-align:center; color:var(--text-3); font-size:0.85rem; padding:20px;">
+              输入你的问题，AI助手会帮你计算
+            </div>
+          </div>
+          <div class="ai-input-wrapper">
+            <textarea class="ai-input" id="aiInput" placeholder="例：我有额度53000，客户拿了56000的货..." rows="3"></textarea>
+            <button class="ai-send" id="aiSend">发送</button>
+          </div>
+        </div>
+      </div>
     </div>
 
   </main>

@@ -2,8 +2,8 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "salesledger-dev",
-      "url": "http://localhost:8787"
+      "name": "test",
+      "url": "https://salesledger-test.chengjiajian2013.workers.dev"
     }
   ]
 }

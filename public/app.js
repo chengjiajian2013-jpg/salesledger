@@ -5,6 +5,8 @@ import { state, setState, subscribe, getState } from './modules/state.js';
 import { COMMISSION_DEFAULTS, calcProfit, formatRate } from './modules/commission.js';
 import { formatCurrency, formatDate, todayStr, escapeHtml, capitalizeBrand } from './modules/format.js';
 import { isAuthenticated, login } from './modules/auth.js';
+import { callAI } from './modules/ai.js';
+import { getAllChats, createChat, getChat, addMessage, deleteChat, getChatMessages } from './modules/aiStorage.js';
 
 // ═══ 认证检查 ═══
 const loginPage = document.getElementById('loginPage');
@@ -116,11 +118,18 @@ function initApp() {
 // ═══ DOM ═══
 const $ = (s) => document.querySelector(s);
 const el = {
+  headerMonthlyTotal: $('#headerMonthlyTotal'),
   statsGrid: $('#statsGrid'),
   sellerTabs: $('#sellerTabs'),
   viewTabs: $('#viewTabs'),
   transactionsView: $('#transactionsView'),
   monthlyView: $('#monthlyView'),
+  aiView: $('#aiView'),
+  aiNewChat: $('#aiNewChat'),
+  aiChatList: $('#aiChatList'),
+  aiMessages: $('#aiMessages'),
+  aiInput: $('#aiInput'),
+  aiSend: $('#aiSend'),
   filterMonth: $('#filterMonth'),
   prevMonth: $('#prevMonth'),
   nextMonth: $('#nextMonth'),
@@ -267,14 +276,28 @@ function switchView(view) {
     el.statsGrid.style.display = 'grid';
     el.transactionsView.style.display = 'block';
     el.monthlyView.style.display = 'none';
+    el.aiView.style.display = 'none';
     refreshAll();
-  } else {
+  } else if (view === 'monthly') {
     // 月度统计：隐藏 seller-tabs，只显示月均+年总数
     el.sellerTabs.style.display = 'none';
     el.statsGrid.style.display = 'none';
     el.transactionsView.style.display = 'none';
     el.monthlyView.style.display = 'block';
+    el.aiView.style.display = 'none';
     loadMonthlyStats();
+  } else if (view === 'ai') {
+    // AI助手：隐藏 seller-tabs、统计和FAB按钮
+    el.sellerTabs.style.display = 'none';
+    el.statsGrid.style.display = 'none';
+    el.transactionsView.style.display = 'none';
+    el.monthlyView.style.display = 'none';
+    el.aiView.style.display = 'block';
+    el.fab.style.display = 'none';
+    loadAIView();
+  } else {
+    // 其他视图恢复FAB按钮
+    el.fab.style.display = 'flex';
   }
 }
 
@@ -488,9 +511,46 @@ async function loadSummary() {
     const data = res.data || res;
     setState({ summary: data });
     renderSummary(data);
+    updateHeaderMonthlyTotal(); // 更新header的当月总计
   } catch (e) {
     console.error('[Summary]', e);
     showToast('统计数据加载失败', 'error');
+  }
+}
+
+// 更新header的当月总计（公司+个人）
+async function updateHeaderMonthlyTotal() {
+  if (!el.headerMonthlyTotal) return;
+
+  try {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const startDate = `${year}-${month}-01`;
+    const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+    const endDate = `${year}-${month}-${lastDay}`;
+
+    // 获取公司和个人的当月统计
+    const [companyRes, personalRes] = await Promise.all([
+      api.getSummary({ startDate, endDate, seller: 'company' }),
+      api.getSummary({ startDate, endDate, seller: 'personal' })
+    ]);
+
+    const companyData = companyRes.data || companyRes;
+    const personalData = personalRes.data || personalRes;
+
+    const BASE_SALARY = 8000; // 公司底薪
+    const companyTotal = (companyData.totalProfit || 0) + BASE_SALARY;
+    const personalTotal = personalData.totalProfit || 0;
+    const monthlyTotal = companyTotal + personalTotal;
+
+    // 更新显示
+    const valueSpan = el.headerMonthlyTotal.querySelector('span:last-child');
+    if (valueSpan) {
+      valueSpan.textContent = `¥${monthlyTotal.toFixed(0)}`;
+    }
+  } catch (e) {
+    console.error('[HeaderMonthlyTotal]', e);
   }
 }
 
@@ -512,6 +572,7 @@ async function loadTransactions() {
 
 async function refreshAll() {
   await Promise.all([loadSummary(), loadTransactions()]);
+  updateHeaderMonthlyTotal(); // 同时更新header的当月总计
 }
 
 // ═══ 月度统计 ═══
@@ -832,6 +893,15 @@ function bindEvents() {
     const tp = getState().meta.pagination.totalPages;
     if (p < tp) { setState({ filters: { page: p + 1 } }); loadTransactions(); }
   });
+
+  // AI助手事件
+  el.aiNewChat.addEventListener('click', handleNewChat);
+  el.aiSend.addEventListener('click', handleSendMessage);
+  el.aiInput.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      handleSendMessage();
+    }
+  });
 }
 
 // ═══ 应用启动 ═══
@@ -851,5 +921,654 @@ async function startApp() {
 
 // 启动应用
 document.addEventListener('DOMContentLoaded', startApp);
+
+// ═══ AI助手功能 ═══
+let currentChatId = null;
+
+// 加载AI视图
+function loadAIView() {
+  const chats = getAllChats();
+
+  // 如果没有对话，创建第一个
+  if (chats.length === 0) {
+    const newChat = createChat();
+    currentChatId = newChat.id;
+  } else if (!currentChatId) {
+    // 默认选中第一个对话
+    currentChatId = chats[0].id;
+  }
+
+  renderChatList();
+  renderMessages();
+
+  // 加载当前对话的暂存数据
+  loadSavedFormData();
+
+  // 确保表单展开
+  const aiFormContent = document.getElementById('aiFormContent');
+  const aiFormToggle = document.getElementById('aiFormToggle');
+  if (aiFormContent && aiFormToggle) {
+    aiFormContent.classList.remove('ai-form__content--collapsed');
+    setTimeout(() => {
+      aiFormContent.style.maxHeight = aiFormContent.scrollHeight + 'px';
+    }, 100);
+    aiFormToggle.textContent = '收起';
+  }
+
+  // 设置侧边栏初始状态为隐藏
+  const aiSidebar = document.getElementById('aiSidebar');
+  const aiMain = document.querySelector('.ai-main');
+  const aiToggleSidebar = document.getElementById('aiToggleSidebar');
+  if (aiSidebar && aiMain && aiToggleSidebar) {
+    aiSidebar.classList.add('ai-sidebar--collapsed');
+    aiMain.classList.add('ai-main--expanded');
+    aiToggleSidebar.textContent = '☰';
+  }
+
+  // 默认选中个人交易
+  const personalBtn = document.querySelector('.ai-form__btn[data-field="type"][data-value="personal"]');
+  if (personalBtn && !formData.type) {
+    personalBtn.click();
+  }
+}
+
+// 渲染对话列表
+function renderChatList() {
+  const chats = getAllChats();
+
+  if (chats.length === 0) {
+    el.aiChatList.innerHTML = '<div style="text-align:center;color:var(--text-3);font-size:0.75rem;padding:20px;">暂无对话</div>';
+    return;
+  }
+
+  el.aiChatList.innerHTML = chats.map(chat => {
+    const active = chat.id === currentChatId ? ' ai-chat-item--active' : '';
+    return `
+      <div class="ai-chat-item${active}" data-id="${chat.id}">
+        ${escapeHtml(chat.title)}
+        <button class="ai-chat-item__delete" data-id="${chat.id}" title="删除">×</button>
+      </div>
+    `;
+  }).join('');
+
+  // 绑定点击事件
+  el.aiChatList.querySelectorAll('.ai-chat-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      if (!e.target.classList.contains('ai-chat-item__delete')) {
+        currentChatId = item.dataset.id;
+        renderChatList();
+        renderMessages();
+        loadSavedFormData(); // 切换对话时加载暂存数据
+      }
+    });
+  });
+
+  // 绑定删除事件
+  el.aiChatList.querySelectorAll('.ai-chat-item__delete').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      if (confirm('确定删除这个对话？')) {
+        deleteChat(id);
+        if (currentChatId === id) {
+          const chats = getAllChats();
+          currentChatId = chats.length > 0 ? chats[0].id : null;
+        }
+        renderChatList();
+        renderMessages();
+      }
+    });
+  });
+}
+
+// 渲染消息
+function renderMessages() {
+  if (!currentChatId) {
+    el.aiMessages.innerHTML = '<div style="text-align:center;color:var(--text-3);padding:40px;">选择或创建一个对话开始</div>';
+    return;
+  }
+
+  const chat = getChat(currentChatId);
+  if (!chat || chat.messages.length === 0) {
+    el.aiMessages.innerHTML = '<div style="text-align:center;color:var(--text-3);padding:40px;">输入你的问题，AI助手会帮你计算</div>';
+    return;
+  }
+
+  el.aiMessages.innerHTML = chat.messages.map(msg => {
+    const className = msg.role === 'user' ? 'ai-message--user' : 'ai-message--assistant';
+    return `<div class="ai-message ${className}">${escapeHtml(msg.content).replace(/\n/g, '<br>')}</div>`;
+  }).join('');
+
+  // 滚动到底部
+  el.aiMessages.scrollTop = el.aiMessages.scrollHeight;
+}
+
+// 新建对话
+function handleNewChat() {
+  const newChat = createChat();
+  currentChatId = newChat.id;
+  renderChatList();
+  renderMessages();
+  el.aiInput.focus();
+}
+
+// 发送消息
+async function handleSendMessage() {
+  const content = el.aiInput.value.trim();
+  if (!content) return;
+
+  // 如果没有当前对话，创建一个
+  if (!currentChatId) {
+    const newChat = createChat();
+    currentChatId = newChat.id;
+    renderChatList();
+  }
+
+  // 添加用户消息
+  addMessage(currentChatId, 'user', content);
+  el.aiInput.value = '';
+  renderMessages();
+
+  // 禁用发送按钮
+  el.aiSend.disabled = true;
+  el.aiSend.textContent = '思考中...';
+
+  try {
+    // 获取对话历史并调用AI
+    const messages = getChatMessages(currentChatId);
+    const response = await callAI(messages);
+
+    // 添加AI回复
+    addMessage(currentChatId, 'assistant', response);
+    renderChatList(); // 更新列表（可能标题变了）
+    renderMessages();
+  } catch (error) {
+    console.error('AI调用失败:', error);
+
+    // 显示错误消息
+    el.aiMessages.innerHTML += `<div class="ai-message ai-message--error">❌ ${escapeHtml(error.message)}</div>`;
+    el.aiMessages.scrollTop = el.aiMessages.scrollHeight;
+  } finally {
+    // 恢复发送按钮
+    el.aiSend.disabled = false;
+    el.aiSend.textContent = '发送';
+    el.aiInput.focus();
+  }
+}
+
+// ═══ AI视图交互增强 ═══
+// 折叠/展开侧边栏
+const aiToggleSidebar = document.getElementById('aiToggleSidebar');
+const aiSidebar = document.getElementById('aiSidebar');
+const aiMain = document.querySelector('.ai-main');
+let sidebarCollapsed = true;  // 初始状态为隐藏
+
+if (aiToggleSidebar) {
+  aiToggleSidebar.addEventListener('click', () => {
+    sidebarCollapsed = !sidebarCollapsed;
+    if (sidebarCollapsed) {
+      aiSidebar.classList.add('ai-sidebar--collapsed');
+      if (aiMain) aiMain.classList.add('ai-main--expanded');
+      aiToggleSidebar.textContent = '☰';
+    } else {
+      aiSidebar.classList.remove('ai-sidebar--collapsed');
+      if (aiMain) aiMain.classList.remove('ai-main--expanded');
+      aiToggleSidebar.textContent = '✕';
+    }
+  });
+}
+
+// 交互式表单
+const aiForm = document.getElementById('aiForm');
+const aiFormToggle = document.getElementById('aiFormToggle');
+const aiFormContent = document.getElementById('aiFormContent');
+const formSubmit = document.getElementById('formSubmit');
+const formSave = document.getElementById('formSave');
+const formQuota = document.getElementById('formQuota');
+const formCost = document.getElementById('formCost');
+const formPrice = document.getElementById('formPrice');
+const formCostGroup = document.getElementById('formCostGroup');
+const goodsItems = document.getElementById('goodsItems');
+const addGoodsBtn = document.getElementById('addGoodsBtn');
+const totalGoodsDisplay = document.getElementById('totalGoodsDisplay');
+
+let formData = {
+  type: null,
+  goods: []
+};
+let formExpanded = true;
+
+// 从localStorage加载暂存数据（按对话ID）
+function loadSavedFormData() {
+  if (!currentChatId) return;
+
+  try {
+    const key = `aiFormData_${currentChatId}`;
+    const saved = localStorage.getItem(key);
+    if (saved) {
+      const data = JSON.parse(saved);
+
+      // 恢复交易类型
+      if (data.type) {
+        formData.type = data.type;
+        // 先清除所有交易类型按钮的active状态
+        document.querySelectorAll('.ai-form__btn[data-field="type"]').forEach(b => {
+          b.classList.remove('ai-form__btn--active');
+        });
+        // 设置正确的按钮为active
+        const btn = document.querySelector(`.ai-form__btn[data-field="type"][data-value="${data.type}"]`);
+        if (btn) {
+          btn.classList.add('ai-form__btn--active');
+          if (data.type === 'personal') {
+            formCostGroup.style.display = 'block';
+          } else {
+            formCostGroup.style.display = 'none';
+          }
+        }
+      }
+
+      // 恢复额度总计
+      if (data.quota) formQuota.value = data.quota;
+
+      // 恢复成本折扣
+      if (data.cost) formCost.value = data.cost;
+
+      // 恢复卖价折扣
+      if (data.price) formPrice.value = data.price;
+
+      // 恢复货物明细
+      if (data.goods && data.goods.length > 0) {
+        // 清空现有货物项
+        while (goodsItems.children.length > 0) {
+          goodsItems.removeChild(goodsItems.lastChild);
+        }
+
+        // 重新创建货物项
+        data.goods.forEach((good, index) => {
+          const item = document.createElement('div');
+          item.className = 'ai-form__quota-item';
+          item.dataset.index = index;
+
+          // 支持旧数据格式（直接是数字）和新数据格式（包含name和amount）
+          const goodName = typeof good === 'object' ? (good.name || '') : '';
+          const goodAmount = typeof good === 'object' ? good.amount : good;
+
+          item.innerHTML = `
+            <input type="text" class="ai-form__input goods-name" placeholder="商品名称" style="width:80px;flex-shrink:0;" value="${goodName}">
+            <input type="text" inputmode="decimal" class="ai-form__input goods-amount" placeholder="货物金额（元）" style="flex:1;" data-number-only value="${goodAmount}">
+            <button type="button" class="ai-form__btn-remove" style="width:32px;height:38px;border:1px solid var(--danger);color:var(--danger);background:var(--surface);border-radius:var(--radius-sm);cursor:pointer;">−</button>
+          `;
+          goodsItems.appendChild(item);
+
+          // 为新添加的货物金额输入框添加数字限制
+          const amountInput = item.querySelector('.goods-amount');
+          if (amountInput) restrictNumberInput(amountInput);
+
+          // 绑定删除按钮
+          item.querySelector('.ai-form__btn-remove').addEventListener('click', () => {
+            if (goodsItems.children.length > 1) {
+              item.remove();
+              updateTotalGoods();
+            }
+          });
+        });
+
+        updateTotalGoods();
+      }
+
+      // 恢复输入框内容
+      if (data.inputText && el.aiInput) {
+        el.aiInput.value = data.inputText;
+      }
+    }
+  } catch (e) {
+    console.error('加载暂存数据失败:', e);
+  }
+}
+
+// 页面加载时恢复数据
+if (aiForm) {
+  loadSavedFormData();
+}
+
+// 收起/展开表单
+if (aiFormToggle && aiFormContent) {
+  aiFormToggle.addEventListener('click', () => {
+    formExpanded = !formExpanded;
+    if (formExpanded) {
+      aiFormContent.classList.remove('ai-form__content--collapsed');
+      aiFormContent.style.maxHeight = aiFormContent.scrollHeight + 'px';
+      aiFormToggle.textContent = '收起';
+    } else {
+      aiFormContent.style.maxHeight = '0';
+      aiFormContent.classList.add('ai-form__content--collapsed');
+      aiFormToggle.textContent = '展开';
+    }
+  });
+
+  // 初始化：默认展开状态
+  if (formExpanded) {
+    aiFormContent.classList.remove('ai-form__content--collapsed');
+    setTimeout(() => {
+      aiFormContent.style.maxHeight = aiFormContent.scrollHeight + 'px';
+    }, 0);
+    aiFormToggle.textContent = '收起';
+  }
+}
+
+// 计算货物总额
+function updateTotalGoods() {
+  let total = 0;
+  goodsItems.querySelectorAll('.goods-amount').forEach(input => {
+    const val = parseFloat(input.value);
+    if (val && val > 0) {
+      total += val;
+    }
+  });
+
+  if (total > 0) {
+    let displayText = `(总计: ${total.toFixed(0)}元)`;
+
+    // 计算差额（额度总计 - 实际货物总计），单独括号显示
+    const quota = parseFloat(formQuota.value);
+    if (quota && quota > 0) {
+      const diff = quota - total;
+      if (diff > 0) {
+        displayText += ` (-${diff.toFixed(0)}元)`;
+      } else if (diff < 0) {
+        displayText += ` (+${Math.abs(diff).toFixed(0)}元)`;
+      }
+    }
+
+    totalGoodsDisplay.textContent = displayText;
+  } else {
+    totalGoodsDisplay.textContent = '';
+  }
+}
+
+// 监听货物输入变化
+if (goodsItems) {
+  goodsItems.addEventListener('input', (e) => {
+    if (e.target.classList.contains('goods-amount')) {
+      updateTotalGoods();
+    }
+  });
+}
+
+// 监听额度总计输入变化
+if (formQuota) {
+  formQuota.addEventListener('input', () => {
+    updateTotalGoods();
+  });
+}
+
+// 限制所有数字输入框只能输入数字和小数点
+function restrictNumberInput(input) {
+  input.addEventListener('input', (e) => {
+    let value = e.target.value;
+    let originalValue = value;
+
+    // 只保留数字和小数点
+    value = value.replace(/[^\d.]/g, '');
+
+    // 只保留第一个小数点
+    const parts = value.split('.');
+    if (parts.length > 2) {
+      value = parts[0] + '.' + parts.slice(1).join('');
+    }
+
+    // 只有当值发生变化时才更新，避免死循环
+    if (value !== originalValue) {
+      e.target.value = value;
+    }
+  });
+}
+
+// 为已存在的数字输入框添加限制
+if (formQuota) restrictNumberInput(formQuota);
+if (formCost) restrictNumberInput(formCost);
+if (formPrice) restrictNumberInput(formPrice);
+goodsItems.querySelectorAll('.goods-amount').forEach(input => restrictNumberInput(input));
+
+// 添加货物项
+if (addGoodsBtn) {
+  addGoodsBtn.addEventListener('click', () => {
+    const index = goodsItems.children.length;
+    const item = document.createElement('div');
+    item.className = 'ai-form__quota-item';
+    item.dataset.index = index;
+    item.innerHTML = `
+      <input type="text" class="ai-form__input goods-name" placeholder="商品名称" style="width:80px;flex-shrink:0;">
+      <input type="text" inputmode="decimal" class="ai-form__input goods-amount" placeholder="货物金额（元）" style="flex:1;" data-number-only>
+      <button type="button" class="ai-form__btn-remove" style="width:32px;height:38px;border:1px solid var(--danger);color:var(--danger);background:var(--surface);border-radius:var(--radius-sm);cursor:pointer;">−</button>
+    `;
+    goodsItems.appendChild(item);
+
+    // 为新添加的货物金额输入框添加数字限制
+    const newAmountInput = item.querySelector('.goods-amount');
+    if (newAmountInput) restrictNumberInput(newAmountInput);
+
+    // 绑定删除按钮
+    item.querySelector('.ai-form__btn-remove').addEventListener('click', () => {
+      if (goodsItems.children.length > 1) {
+        item.remove();
+        updateTotalGoods();
+        // 更新表单高度
+        if (formExpanded && aiFormContent) {
+          aiFormContent.style.maxHeight = aiFormContent.scrollHeight + 'px';
+        }
+      }
+    });
+
+    // 更新表单高度
+    if (formExpanded && aiFormContent) {
+      aiFormContent.style.maxHeight = aiFormContent.scrollHeight + 'px';
+    }
+  });
+}
+
+// 删除货物项（初始项）
+goodsItems.querySelectorAll('.ai-form__btn-remove').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    const item = e.target.closest('.ai-form__quota-item');
+    if (goodsItems.children.length > 1) {
+      item.remove();
+      updateTotalGoods();
+    }
+  });
+});
+
+// 暂存按钮
+if (formSave) {
+  formSave.addEventListener('click', () => {
+    if (!currentChatId) {
+      alert('请先创建或选择一个对话');
+      return;
+    }
+
+    // 收集货物明细（包含名称和金额）
+    const goods = [];
+    goodsItems.querySelectorAll('.ai-form__quota-item').forEach(item => {
+      const nameInput = item.querySelector('.goods-name');
+      const amountInput = item.querySelector('.goods-amount');
+      const amount = parseFloat(amountInput.value);
+      if (amount && amount > 0) {
+        goods.push({
+          name: nameInput ? nameInput.value : '',
+          amount: amount
+        });
+      }
+    });
+
+    const saveData = {
+      type: formData.type,
+      quota: formQuota.value,
+      cost: formCost.value,
+      price: formPrice.value,
+      goods: goods,
+      inputText: el.aiInput ? el.aiInput.value : '' // 保存输入框内容
+    };
+
+    const key = `aiFormData_${currentChatId}`;
+    localStorage.setItem(key, JSON.stringify(saveData));
+    alert('表单已暂存到当前对话');
+  });
+}
+
+// 按钮选择逻辑
+document.querySelectorAll('.ai-form__btn[data-field]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const field = btn.dataset.field;
+    const value = btn.dataset.value;
+
+    // 同一组按钮只能选一个
+    document.querySelectorAll(`.ai-form__btn[data-field="${field}"]`).forEach(b => {
+      b.classList.remove('ai-form__btn--active');
+    });
+    btn.classList.add('ai-form__btn--active');
+
+    // 保存数据
+    formData[field] = value;
+
+    // 如果是交易类型，显示/隐藏成本折扣
+    if (field === 'type') {
+      if (value === 'personal') {
+        formCostGroup.style.display = 'block';
+      } else {
+        formCostGroup.style.display = 'none';
+      }
+    }
+  });
+});
+
+// 表单提交
+if (formSubmit) {
+  formSubmit.addEventListener('click', () => {
+    // 收集货物明细
+    formData.goods = [];
+    goodsItems.querySelectorAll('.goods-amount').forEach(input => {
+      const val = parseFloat(input.value);
+      if (val && val > 0) {
+        formData.goods.push(val);
+      }
+    });
+
+    const quota = parseFloat(formQuota.value);
+    const totalGoods = formData.goods.reduce((a, b) => a + b, 0);
+    const cost = parseFloat(formCost.value);
+    const price = parseFloat(formPrice.value);
+
+    // 验证
+    if (!formData.type) {
+      alert('请选择交易类型');
+      return;
+    }
+    if (!quota || quota <= 0) {
+      alert('请输入额度总计');
+      return;
+    }
+    if (formData.goods.length === 0 || totalGoods <= 0) {
+      alert('请输入至少一个有效的货物金额');
+      return;
+    }
+    if (!price || price <= 0 || price > 1) {
+      alert('请输入有效的卖价折扣（0-1之间）');
+      return;
+    }
+    if (formData.type === 'personal' && (!cost || cost <= 0 || cost > 1)) {
+      alert('个人交易需要输入成本折扣（0-1之间）');
+      return;
+    }
+
+    // 计算超出部分
+    const excess = totalGoods > quota ? totalGoods - quota : 0;
+
+    // 生成问题文本
+    let question = '';
+    if (formData.type === 'personal') {
+      // 个人交易：不计算给公司的钱，只算利润和客户支付
+      question = `个人交易：我有${quota}的额度`;
+      question += `，成本${(cost * 100).toFixed(0)}折，卖${(price * 100).toFixed(0)}折`;
+      if (formData.goods.length > 1) {
+        question += `，实际货物${totalGoods}元（由${formData.goods.join('+')}组成）`;
+      } else {
+        question += `，实际货物${totalGoods}元`;
+      }
+      if (excess > 0) {
+        question += `，超出${excess}元由公司承担折损`;
+      }
+      question += `。帮我算：1.我的利润是多少；2.客户需要付多少钱`;
+    } else {
+      // 公司交易：计算客户实际支付和给公司的钱
+      question = `公司交易：额度${quota}元，${(price * 100).toFixed(0)}折`;
+
+      // 添加货物明细（每个货物的折扣计算）
+      if (formData.goods.length > 1) {
+        question += `，实际货物总计${totalGoods}元，包括：`;
+        const goodsDetails = formData.goods.map(g => `${g}元×${price}=${(g * price).toFixed(2)}元`).join('，');
+        question += goodsDetails;
+      } else {
+        question += `，实际货物${totalGoods}元×${price}=${(totalGoods * price).toFixed(2)}元`;
+      }
+
+      // 计算客户实际支付
+      const customerPay = totalGoods * price;
+      question += `。客户实际支付：${customerPay.toFixed(2)}元`;
+
+      // 如果超额，说明给公司的钱
+      if (excess > 0) {
+        // 给公司的钱 = 客户实际支付 - 自己垫付的超额部分
+        const toCompany = customerPay - excess;
+        question += `。超额${excess}元由我自己垫付。给公司的钱：${toCompany.toFixed(2)}元（客户支付${customerPay.toFixed(2)}元 - 自己垫付${excess}元）`;
+      } else {
+        // 没有超额，给公司的钱就是客户实际支付
+        question += `。给公司的钱：${customerPay.toFixed(2)}元`;
+      }
+
+      question += `。请帮我整理收款明细，方便我收钱`;
+    }
+
+    // 填充到输入框并发送
+    el.aiInput.value = question;
+    handleSendMessage();
+
+    // 清除当前对话的暂存数据
+    if (currentChatId) {
+      const key = `aiFormData_${currentChatId}`;
+      localStorage.removeItem(key);
+    }
+
+    // 收起表单
+    if (aiFormToggle && aiFormContent) {
+      formExpanded = false;
+      aiFormContent.style.maxHeight = '0';
+      aiFormContent.classList.add('ai-form__content--collapsed');
+      aiFormToggle.textContent = '展开';
+    }
+
+    // 清空表单
+    document.querySelectorAll('.ai-form__btn--active').forEach(b => {
+      b.classList.remove('ai-form__btn--active');
+    });
+    formQuota.value = '';
+    goodsItems.querySelectorAll('.goods-amount').forEach(input => {
+      input.value = '';
+    });
+    // 只保留第一个货物项
+    while (goodsItems.children.length > 1) {
+      goodsItems.removeChild(goodsItems.lastChild);
+    }
+    formCost.value = '';
+    formPrice.value = '';
+    formCostGroup.style.display = 'none';
+    formData = { type: null, goods: [] };
+    updateTotalGoods();
+  });
+}
+
+// 显示表单
+if (aiForm) {
+  aiForm.style.display = 'block';
+}
 
 } // end of initApp()
