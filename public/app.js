@@ -2037,11 +2037,18 @@ if (aiRecordBtn) {
       return;
     }
 
+    console.log('===== 录入调试信息 =====');
+    console.log('对话ID:', currentChatId);
+    console.log('消息总数:', chat.messages.length);
+    console.log('最后AI回复:', lastAssistantMsg.content.substring(0, 200));
+
     // 解析AI回复中的数值
     const result = parseAIResponse(lastAssistantMsg.content);
+    console.log('解析结果:', result);
 
     // 从数据库获取表单数据
     const savedFormData = await getFormData(currentChatId);
+    console.log('表单数据:', savedFormData);
     let formInfo = null;
     let goodsList = [];
 
@@ -2057,6 +2064,7 @@ if (aiRecordBtn) {
 
       // 但是交易类型要从AI回复中提取（优先级更高）
       const typeFromAI = parseTransactionTypeFromAI(lastAssistantMsg.content);
+      console.log('AI回复中的交易类型:', typeFromAI);
       if (typeFromAI) {
         formInfo.type = typeFromAI;
       }
@@ -2074,6 +2082,10 @@ if (aiRecordBtn) {
         formInfo.type = typeFromAI;
       }
     }
+
+    console.log('最终表单信息:', formInfo);
+    console.log('货物列表:', goodsList);
+    console.log('======================');
 
     // 打开录入模态框
     openTransactionModal(result, formInfo, goodsList);
