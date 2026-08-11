@@ -473,11 +473,15 @@ function clearErrors() {
 
 // ═══ 智能解析（DeepSeek） ═══
 function toggleParse(open) {
+  // 智能解析功能已移除，保留空函数以防旧代码调用
+  if (!el.parseBody) return;
   const show = open != null ? open : el.parseBody.style.display === 'none';
   el.parseBody.style.display = show ? 'block' : 'none';
 }
 
 function resetParse() {
+  // 智能解析功能已移除，但保留空函数以防旧代码调用
+  if (!el.parseInput || !el.parseWarning || !el.parseBody) return;
   el.parseInput.value = '';
   el.parseWarning.classList.remove('parse-bar__warning--visible');
   el.parseBody.style.display = 'none';
