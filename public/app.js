@@ -2104,6 +2104,7 @@ function openTransactionModal(result, formInfo, goodsList) {
   el.txnForm.reset();
   selectChannel('quota');
   clearErrors();
+  loadOptions();  // 加载货源和品牌名下拉菜单
 
   // 更新类型指示器
   updateSellerIndicator();
