@@ -130,6 +130,7 @@ const el = {
   aiMessages: $('#aiMessages'),
   aiInput: $('#aiInput'),
   aiSend: $('#aiSend'),
+  aiRecordBar: $('#aiRecordBar'),
   filterMonth: $('#filterMonth'),
   prevMonth: $('#prevMonth'),
   nextMonth: $('#nextMonth'),
@@ -996,9 +997,10 @@ function renderChatList() {
 
   el.aiChatList.innerHTML = chats.map(chat => {
     const active = chat.id === currentChatId ? ' ai-chat-item--active' : '';
+    const endedIcon = chat.ended ? ' ✅' : '';
     return `
       <div class="ai-chat-item${active}" data-id="${chat.id}">
-        ${escapeHtml(chat.title)}
+        ${escapeHtml(chat.title)}${endedIcon}
         <button class="ai-chat-item__delete" data-id="${chat.id}" title="删除">×</button>
       </div>
     `;
@@ -1038,19 +1040,69 @@ function renderChatList() {
 function renderMessages() {
   if (!currentChatId) {
     el.aiMessages.innerHTML = '<div style="text-align:center;color:var(--text-3);padding:40px;">选择或创建一个对话开始</div>';
+    // 隐藏录入按钮
+    if (el.aiRecordBar) el.aiRecordBar.style.display = 'none';
+    // 恢复输入
+    el.aiInput.disabled = false;
+    el.aiSend.disabled = false;
+    const aiEndBtn = document.getElementById('aiEndBtn');
+    if (aiEndBtn) aiEndBtn.disabled = false;
     return;
   }
 
   const chat = getChat(currentChatId);
   if (!chat || chat.messages.length === 0) {
     el.aiMessages.innerHTML = '<div style="text-align:center;color:var(--text-3);padding:40px;">输入你的问题，AI助手会帮你计算</div>';
+    // 隐藏录入按钮
+    if (el.aiRecordBar) el.aiRecordBar.style.display = 'none';
+    // 恢复输入
+    el.aiInput.disabled = false;
+    el.aiSend.disabled = false;
+    const aiEndBtn = document.getElementById('aiEndBtn');
+    if (aiEndBtn) aiEndBtn.disabled = false;
     return;
   }
 
-  el.aiMessages.innerHTML = chat.messages.map(msg => {
+  // 检查对话是否已结束
+  const isEnded = chat.ended === true;
+  if (isEnded) {
+    // 显示录入按钮
+    if (el.aiRecordBar) el.aiRecordBar.style.display = 'block';
+    // 禁用输入和发送
+    el.aiInput.disabled = true;
+    el.aiSend.disabled = true;
+    const aiEndBtn = document.getElementById('aiEndBtn');
+    if (aiEndBtn) aiEndBtn.disabled = true;
+  } else {
+    // 隐藏录入按钮
+    if (el.aiRecordBar) el.aiRecordBar.style.display = 'none';
+    // 恢复输入
+    el.aiInput.disabled = false;
+    el.aiSend.disabled = false;
+    const aiEndBtn = document.getElementById('aiEndBtn');
+    if (aiEndBtn) aiEndBtn.disabled = false;
+  }
+
+  el.aiMessages.innerHTML = chat.messages.map((msg, idx) => {
     const className = msg.role === 'user' ? 'ai-message--user' : 'ai-message--assistant';
-    return `<div class="ai-message ${className}">${escapeHtml(msg.content).replace(/\n/g, '<br>')}</div>`;
+    const copyBtn = msg.role === 'assistant' ? `<button class="ai-message__copy" data-idx="${idx}" title="复制">📋</button>` : '';
+    return `<div class="ai-message ${className}">${escapeHtml(msg.content).replace(/\n/g, '<br>')}${copyBtn}</div>`;
   }).join('');
+
+  // 绑定复制按钮事件
+  el.aiMessages.querySelectorAll('.ai-message__copy').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const idx = parseInt(btn.dataset.idx);
+      if (chat.messages[idx]) {
+        navigator.clipboard.writeText(chat.messages[idx].content).then(() => {
+          showToast('已复制到剪贴板', 'info');
+        }).catch(() => {
+          showToast('复制失败', 'error');
+        });
+      }
+    });
+  });
 
   // 滚动到底部
   el.aiMessages.scrollTop = el.aiMessages.scrollHeight;
@@ -1465,17 +1517,22 @@ document.querySelectorAll('.ai-form__btn[data-field]').forEach(btn => {
 // 表单提交
 if (formSubmit) {
   formSubmit.addEventListener('click', () => {
-    // 收集货物明细
+    // 收集货物明细（包含名称和金额）
     formData.goods = [];
-    goodsItems.querySelectorAll('.goods-amount').forEach(input => {
-      const val = parseFloat(input.value);
-      if (val && val > 0) {
-        formData.goods.push(val);
+    goodsItems.querySelectorAll('.ai-form__quota-item').forEach(item => {
+      const nameInput = item.querySelector('.goods-name');
+      const amountInput = item.querySelector('.goods-amount');
+      const amount = parseFloat(amountInput.value);
+      if (amount && amount > 0) {
+        formData.goods.push({
+          name: nameInput ? nameInput.value : '',
+          amount: amount
+        });
       }
     });
 
     const quota = parseFloat(formQuota.value);
-    const totalGoods = formData.goods.reduce((a, b) => a + b, 0);
+    const totalGoods = formData.goods.reduce((a, b) => a + b.amount, 0);
     const cost = parseFloat(formCost.value);
     const price = parseFloat(formPrice.value);
 
@@ -1509,9 +1566,11 @@ if (formSubmit) {
       question = `个人交易：我有${quota}的额度`;
       question += `，成本${(cost * 100).toFixed(0)}折，卖${(price * 100).toFixed(0)}折`;
       if (formData.goods.length > 1) {
-        question += `，实际货物${totalGoods}元（由${formData.goods.join('+')}组成）`;
+        const goodsDesc = formData.goods.map(g => `${g.name ? g.name + '：' : ''}${g.amount}元`).join('、');
+        question += `，实际货物共${totalGoods}元（${goodsDesc}）`;
       } else {
-        question += `，实际货物${totalGoods}元`;
+        const g = formData.goods[0];
+        question += `，实际货物${g.name ? g.name + '：' : ''}${totalGoods}元`;
       }
       if (excess > 0) {
         question += `，超出${excess}元由公司承担折损`;
@@ -1521,13 +1580,14 @@ if (formSubmit) {
       // 公司交易：计算客户实际支付和给公司的钱
       question = `公司交易：额度${quota}元，${(price * 100).toFixed(0)}折`;
 
-      // 添加货物明细（每个货物的折扣计算）
+      // 添加货物明细（包含商品名称）
       if (formData.goods.length > 1) {
         question += `，实际货物总计${totalGoods}元，包括：`;
-        const goodsDetails = formData.goods.map(g => `${g}元×${price}=${(g * price).toFixed(2)}元`).join('，');
+        const goodsDetails = formData.goods.map(g => `${g.name ? g.name + '：' : ''}${g.amount}元×${price}=${(g.amount * price).toFixed(2)}元`).join('，');
         question += goodsDetails;
       } else {
-        question += `，实际货物${totalGoods}元×${price}=${(totalGoods * price).toFixed(2)}元`;
+        const g = formData.goods[0];
+        question += `，实际货物${g.name ? g.name + '：' : ''}${totalGoods}元×${price}=${(totalGoods * price).toFixed(2)}元`;
       }
 
       // 计算客户实际支付
@@ -1594,6 +1654,183 @@ if (formSubmit) {
 // 显示表单
 if (aiForm) {
   aiForm.style.display = 'block';
+}
+
+// 结束对话按钮
+const aiEndBtn = document.getElementById('aiEndBtn');
+const aiRecordBar = document.getElementById('aiRecordBar');
+const aiRecordBtn = document.getElementById('aiRecordBtn');
+
+if (aiEndBtn) {
+  aiEndBtn.addEventListener('click', () => {
+    if (!currentChatId) {
+      alert('请先选择一个对话');
+      return;
+    }
+
+    const chat = getChat(currentChatId);
+    if (!chat || chat.messages.length === 0) {
+      alert('对话中没有内容');
+      return;
+    }
+
+    // 标记对话为已结束
+    chat.ended = true;
+    localStorage.setItem(`chat_${currentChatId}`, JSON.stringify(chat));
+
+    // 显示录入按钮
+    if (aiRecordBar) aiRecordBar.style.display = 'block';
+
+    // 禁用输入和发送
+    el.aiInput.disabled = true;
+    el.aiSend.disabled = true;
+    if (aiEndBtn) aiEndBtn.disabled = true;
+
+    showToast('对话已结束，可以录入交易明细', 'info');
+  });
+}
+
+// 录入交易明细按钮
+if (aiRecordBtn) {
+  aiRecordBtn.addEventListener('click', () => {
+    if (!currentChatId) return;
+
+    const chat = getChat(currentChatId);
+    if (!chat || chat.messages.length === 0) return;
+
+    // 获取最后一条AI回复
+    const lastAssistantMsg = [...chat.messages].reverse().find(m => m.role === 'assistant');
+    if (!lastAssistantMsg) {
+      alert('没有找到AI回复');
+      return;
+    }
+
+    // 解析AI回复中的数值
+    const result = parseAIResponse(lastAssistantMsg.content);
+
+    // 从对话历史中获取表单数据
+    const firstUserMsg = chat.messages.find(m => m.role === 'user');
+    let formInfo = null;
+    if (firstUserMsg) {
+      formInfo = parseFormFromQuestion(firstUserMsg.content);
+    }
+
+    // 打开录入模态框
+    openTransactionModal(result, formInfo);
+  });
+}
+
+// 解析AI回复中的数值
+function parseAIResponse(content) {
+  const result = {
+    customerPay: 0,    // 客户支付
+    toCompany: 0,      // 给公司的钱
+    profit: 0,         // 利润
+    excess: 0          // 超额
+  };
+
+  // 匹配"客户支付"或"客户实际支付"
+  const customerPayMatch = content.match(/客户(?:实际)?支付[：:]\s*([\d,]+\.?\d*)\s*元/);
+  if (customerPayMatch) {
+    result.customerPay = parseFloat(customerPayMatch[1].replace(/,/g, ''));
+  }
+
+  // 匹配"给公司的钱"
+  const toCompanyMatch = content.match(/给公司的钱[：:]\s*([\d,]+\.?\d*)\s*元/);
+  if (toCompanyMatch) {
+    result.toCompany = parseFloat(toCompanyMatch[1].replace(/,/g, ''));
+  }
+
+  // 匹配"利润"
+  const profitMatch = content.match(/利润[：:]\s*([\d,]+\.?\d*)\s*元/);
+  if (profitMatch) {
+    result.profit = parseFloat(profitMatch[1].replace(/,/g, ''));
+  }
+
+  // 匹配"超额"
+  const excessMatch = content.match(/超额\s*([\d,]+\.?\d*)\s*元/);
+  if (excessMatch) {
+    result.excess = parseFloat(excessMatch[1].replace(/,/g, ''));
+  }
+
+  return result;
+}
+
+// 从问题中解析表单信息
+function parseFormFromQuestion(question) {
+  const info = {
+    type: 'company',
+    quota: 0,
+    price: 0,
+    cost: 0
+  };
+
+  if (question.includes('个人交易')) {
+    info.type = 'personal';
+  } else if (question.includes('公司交易')) {
+    info.type = 'company';
+  }
+
+  // 匹配额度
+  const quotaMatch = question.match(/额度\s*([\d,]+\.?\d*)\s*元/);
+  if (quotaMatch) {
+    info.quota = parseFloat(quotaMatch[1].replace(/,/g, ''));
+  }
+
+  // 匹配折扣
+  const priceMatch = question.match(/(\d+)折/);
+  if (priceMatch) {
+    info.price = parseInt(priceMatch[1]) / 100;
+  }
+
+  // 匹配成本折扣（个人交易）
+  const costMatch = question.match(/成本(\d+)折/);
+  if (costMatch) {
+    info.cost = parseInt(costMatch[1]) / 100;
+  }
+
+  return info;
+}
+
+// 打开交易录入模态框
+function openTransactionModal(result, formInfo) {
+  // 切换到交易明细视图
+  switchView('transactions');
+
+  // 根据类型切换卖家
+  if (formInfo) {
+    currentSeller = formInfo.type;
+    // 更新卖家标签
+    el.sellerTabs.querySelectorAll('.seller-tab').forEach(tab => {
+      tab.classList.toggle('seller-tab--active', tab.dataset.seller === formInfo.type);
+    });
+  }
+
+  // 打开模态框
+  openModal();
+
+  // 填充数据
+  const today = new Date().toISOString().split('T')[0];
+  el.inputDate.value = today;
+
+  // 根据类型填充
+  if (formInfo && formInfo.type === 'company') {
+    // 公司交易：售价=给公司的钱
+    el.inputPrice.value = result.customerPay.toFixed(2);
+    el.inputCost.value = (result.customerPay - result.toCompany).toFixed(2) || '0';
+  } else {
+    // 个人交易：售价=客户支付，成本=客户支付-利润
+    el.inputPrice.value = result.customerPay.toFixed(2);
+    el.inputCost.value = (result.customerPay - result.profit).toFixed(2) || '0';
+  }
+
+  // 添加备注
+  el.inputNote.value = `AI计算：客户支付${result.customerPay.toFixed(2)}元`;
+
+  // 更新利润预览
+  updateProfitPreview();
+
+  showToast('已自动填充交易数据，请确认后保存', 'info');
 }
 
 } // end of initApp()
