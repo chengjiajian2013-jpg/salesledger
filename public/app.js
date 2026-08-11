@@ -536,21 +536,34 @@ async function updateHeaderMonthlyTotal() {
       api.getSummary({ startDate, endDate, seller: 'personal' })
     ]);
 
+    // 防御性检查
+    if (!companyRes || !personalRes) {
+      console.warn('[HeaderMonthlyTotal] API返回数据为空');
+      return;
+    }
+
     const companyData = companyRes.data || companyRes;
     const personalData = personalRes.data || personalRes;
 
     const BASE_SALARY = 8000; // 公司底薪
-    const companyTotal = (companyData.totalProfit || 0) + BASE_SALARY;
-    const personalTotal = personalData.totalProfit || 0;
+    const companyProfit = parseFloat(companyData.totalProfit) || 0;
+    const personalProfit = parseFloat(personalData.totalProfit) || 0;
+    const companyTotal = companyProfit + BASE_SALARY;
+    const personalTotal = personalProfit;
     const monthlyTotal = companyTotal + personalTotal;
 
     // 更新显示
     const valueSpan = el.headerMonthlyTotal.querySelector('span:last-child');
     if (valueSpan) {
-      valueSpan.textContent = `¥${monthlyTotal.toFixed(0)}`;
+      valueSpan.textContent = `¥${Math.round(monthlyTotal).toLocaleString()}`;
     }
   } catch (e) {
     console.error('[HeaderMonthlyTotal]', e);
+    // 失败时显示默认值
+    const valueSpan = el.headerMonthlyTotal.querySelector('span:last-child');
+    if (valueSpan) {
+      valueSpan.textContent = '¥0';
+    }
   }
 }
 
@@ -1085,8 +1098,19 @@ async function handleSendMessage() {
   } catch (error) {
     console.error('AI调用失败:', error);
 
-    // 显示错误消息
-    el.aiMessages.innerHTML += `<div class="ai-message ai-message--error">❌ ${escapeHtml(error.message)}</div>`;
+    // 显示更友好的错误消息
+    let errorMsg = 'AI调用失败，请稍后重试';
+    if (error.message.includes('503')) {
+      errorMsg = 'AI服务暂时不可用，请稍后重试';
+    } else if (error.message.includes('429')) {
+      errorMsg = '请求过于频繁，请稍后再试';
+    } else if (error.message.includes('network') || error.message.includes('fetch')) {
+      errorMsg = '网络连接失败，请检查网络';
+    } else if (error.message) {
+      errorMsg = `AI调用失败: ${error.message}`;
+    }
+
+    el.aiMessages.innerHTML += `<div class="ai-message ai-message--error">❌ ${escapeHtml(errorMsg)}</div>`;
     el.aiMessages.scrollTop = el.aiMessages.scrollHeight;
   } finally {
     // 恢复发送按钮
@@ -1184,33 +1208,13 @@ function loadSavedFormData() {
         }
 
         // 重新创建货物项
-        data.goods.forEach((good, index) => {
-          const item = document.createElement('div');
-          item.className = 'ai-form__quota-item';
-          item.dataset.index = index;
-
+        data.goods.forEach((good) => {
           // 支持旧数据格式（直接是数字）和新数据格式（包含name和amount）
           const goodName = typeof good === 'object' ? (good.name || '') : '';
           const goodAmount = typeof good === 'object' ? good.amount : good;
 
-          item.innerHTML = `
-            <input type="text" class="ai-form__input goods-name" placeholder="商品名称" style="width:80px;flex-shrink:0;" value="${goodName}">
-            <input type="text" inputmode="decimal" class="ai-form__input goods-amount" placeholder="货物金额（元）" style="flex:1;" data-number-only value="${goodAmount}">
-            <button type="button" class="ai-form__btn-remove" style="width:32px;height:38px;border:1px solid var(--danger);color:var(--danger);background:var(--surface);border-radius:var(--radius-sm);cursor:pointer;">−</button>
-          `;
+          const item = createGoodsItem(goodName, goodAmount);
           goodsItems.appendChild(item);
-
-          // 为新添加的货物金额输入框添加数字限制
-          const amountInput = item.querySelector('.goods-amount');
-          if (amountInput) restrictNumberInput(amountInput);
-
-          // 绑定删除按钮
-          item.querySelector('.ai-form__btn-remove').addEventListener('click', () => {
-            if (goodsItems.children.length > 1) {
-              item.remove();
-              updateTotalGoods();
-            }
-          });
         });
 
         updateTotalGoods();
@@ -1226,9 +1230,43 @@ function loadSavedFormData() {
   }
 }
 
-// 页面加载时恢复数据
+// 创建货物项的HTML元素
+function createGoodsItem(name = '', amount = '') {
+  const item = document.createElement('div');
+  item.className = 'ai-form__quota-item';
+  item.innerHTML = `
+    <input type="text" class="ai-form__input goods-name" placeholder="商品名称" style="width:80px;flex-shrink:0;" value="" maxlength="20">
+    <input type="text" inputmode="decimal" class="ai-form__input goods-amount" placeholder="货物金额（元）" style="flex:1;" data-number-only value="">
+    <button type="button" class="ai-form__btn-remove" style="width:32px;height:38px;border:1px solid var(--danger);color:var(--danger);background:var(--surface);border-radius:var(--radius-sm);cursor:pointer;">−</button>
+  `;
+
+  // 设置值
+  const nameInput = item.querySelector('.goods-name');
+  const amountInput = item.querySelector('.goods-amount');
+  if (nameInput) nameInput.value = name;
+  if (amountInput) amountInput.value = amount;
+
+  // 添加数字限制
+  if (amountInput) restrictNumberInput(amountInput);
+
+  // 绑定删除按钮
+  item.querySelector('.ai-form__btn-remove').addEventListener('click', () => {
+    if (goodsItems.children.length > 1) {
+      item.remove();
+      updateTotalGoods();
+      // 更新表单高度
+      if (formExpanded && aiFormContent) {
+        aiFormContent.style.maxHeight = aiFormContent.scrollHeight + 'px';
+      }
+    }
+  });
+
+  return item;
+}
+
+// 页面加载时恢复数据（延迟执行，确保currentChatId已设置）
 if (aiForm) {
-  loadSavedFormData();
+  // 不立即执行，等待loadAIView中调用
 }
 
 // 收起/展开表单
@@ -1333,32 +1371,8 @@ goodsItems.querySelectorAll('.goods-amount').forEach(input => restrictNumberInpu
 // 添加货物项
 if (addGoodsBtn) {
   addGoodsBtn.addEventListener('click', () => {
-    const index = goodsItems.children.length;
-    const item = document.createElement('div');
-    item.className = 'ai-form__quota-item';
-    item.dataset.index = index;
-    item.innerHTML = `
-      <input type="text" class="ai-form__input goods-name" placeholder="商品名称" style="width:80px;flex-shrink:0;">
-      <input type="text" inputmode="decimal" class="ai-form__input goods-amount" placeholder="货物金额（元）" style="flex:1;" data-number-only>
-      <button type="button" class="ai-form__btn-remove" style="width:32px;height:38px;border:1px solid var(--danger);color:var(--danger);background:var(--surface);border-radius:var(--radius-sm);cursor:pointer;">−</button>
-    `;
+    const item = createGoodsItem('', '');
     goodsItems.appendChild(item);
-
-    // 为新添加的货物金额输入框添加数字限制
-    const newAmountInput = item.querySelector('.goods-amount');
-    if (newAmountInput) restrictNumberInput(newAmountInput);
-
-    // 绑定删除按钮
-    item.querySelector('.ai-form__btn-remove').addEventListener('click', () => {
-      if (goodsItems.children.length > 1) {
-        item.remove();
-        updateTotalGoods();
-        // 更新表单高度
-        if (formExpanded && aiFormContent) {
-          aiFormContent.style.maxHeight = aiFormContent.scrollHeight + 'px';
-        }
-      }
-    });
 
     // 更新表单高度
     if (formExpanded && aiFormContent) {
@@ -1458,25 +1472,23 @@ if (formSubmit) {
     const cost = parseFloat(formCost.value);
     const price = parseFloat(formPrice.value);
 
-    // 验证
+    // 验证 - 使用更友好的提示
+    let errorMsg = '';
     if (!formData.type) {
-      alert('请选择交易类型');
-      return;
+      errorMsg = '请选择交易类型';
+    } else if (!quota || quota <= 0) {
+      errorMsg = '请输入额度总计';
+    } else if (formData.goods.length === 0 || totalGoods <= 0) {
+      errorMsg = '请输入至少一个有效的货物金额';
+    } else if (!price || price <= 0 || price > 1) {
+      errorMsg = '请输入有效的卖价折扣（0-1之间）';
+    } else if (formData.type === 'personal' && (!cost || cost <= 0 || cost > 1)) {
+      errorMsg = '个人交易需要输入成本折扣（0-1之间）';
     }
-    if (!quota || quota <= 0) {
-      alert('请输入额度总计');
-      return;
-    }
-    if (formData.goods.length === 0 || totalGoods <= 0) {
-      alert('请输入至少一个有效的货物金额');
-      return;
-    }
-    if (!price || price <= 0 || price > 1) {
-      alert('请输入有效的卖价折扣（0-1之间）');
-      return;
-    }
-    if (formData.type === 'personal' && (!cost || cost <= 0 || cost > 1)) {
-      alert('个人交易需要输入成本折扣（0-1之间）');
+
+    if (errorMsg) {
+      // 使用toast代替alert
+      showToast(errorMsg, 'error');
       return;
     }
 
@@ -1554,10 +1566,16 @@ if (formSubmit) {
     goodsItems.querySelectorAll('.goods-amount').forEach(input => {
       input.value = '';
     });
+    goodsItems.querySelectorAll('.goods-name').forEach(input => {
+      input.value = '';
+    });
     // 只保留第一个货物项
     while (goodsItems.children.length > 1) {
       goodsItems.removeChild(goodsItems.lastChild);
     }
+    // 清空第一个货物项的商品名称
+    const firstGoodsName = goodsItems.querySelector('.goods-name');
+    if (firstGoodsName) firstGoodsName.value = '';
     formCost.value = '';
     formPrice.value = '';
     formCostGroup.style.display = 'none';
