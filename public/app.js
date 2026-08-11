@@ -1108,6 +1108,23 @@ async function renderChatList() {
         await renderChatList();
         await renderMessages();
         await loadSavedFormData(); // 切换对话时加载暂存数据
+
+        // 根据对话状态显示/隐藏按钮
+        const chat = await getChat(currentChatId);
+        const isClosed = chat && chat.status === 'closed';
+        const aiInputContainer = document.querySelector('.ai-input-container');
+        const formActionsContainer = document.querySelector('.ai-form__actions');
+        const addGoodsBtn = document.getElementById('addGoodsBtn');
+
+        if (aiInputContainer) {
+          aiInputContainer.style.display = isClosed ? 'none' : 'flex';
+        }
+        if (formActionsContainer) {
+          formActionsContainer.style.display = isClosed ? 'none' : 'flex';
+        }
+        if (addGoodsBtn) {
+          addGoodsBtn.style.display = isClosed ? 'none' : 'block';
+        }
       }
     });
   });
