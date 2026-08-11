@@ -1187,38 +1187,43 @@ async function renderMessages() {
 
 // 新建对话
 async function handleNewChat() {
-  const newChat = await createChat();
-  currentChatId = newChat.id;
+  try {
+    const newChat = await createChat();
+    currentChatId = newChat.id;
 
-  // 清空表单数据并设置默认值
-  formData = { type: '', quota: '', cost: '0.8', price: '0.89', goods: [] };
-  if (formQuota) formQuota.value = '';
-  if (formCost) formCost.value = '0.8';
-  if (formPrice) formPrice.value = '0.89';
-  if (el.aiInput) el.aiInput.value = '';
+    // 清空表单数据并设置默认值
+    formData = { type: '', quota: '', cost: '0.8', price: '0.89', goods: [] };
+    if (formQuota) formQuota.value = '';
+    if (formCost) formCost.value = '0.8';
+    if (formPrice) formPrice.value = '0.89';
+    if (el.aiInput) el.aiInput.value = '';
 
-  // 清空货物列表，保留一个空项
-  if (goodsItems) {
-    goodsItems.innerHTML = '';
-    const item = createGoodsItem('', '');
-    goodsItems.appendChild(item);
+    // 清空货物列表，保留一个空项
+    if (goodsItems) {
+      goodsItems.innerHTML = '';
+      const item = createGoodsItem('', '');
+      goodsItems.appendChild(item);
+    }
+
+    // 重置交易类型按钮
+    document.querySelectorAll('.ai-form__btn[data-field="type"]').forEach(b => {
+      b.classList.remove('ai-form__btn--active');
+    });
+
+    await renderChatList();
+    await renderMessages();
+
+    // 默认选中个人交易
+    const personalBtn = document.querySelector('.ai-form__btn[data-field="type"][data-value="personal"]');
+    if (personalBtn) {
+      personalBtn.click();
+    }
+
+    el.aiInput.focus();
+  } catch (error) {
+    console.error('[handleNewChat]', error);
+    showToast('创建对话失败：' + (error.message || '未知错误'), 'error');
   }
-
-  // 重置交易类型按钮
-  document.querySelectorAll('.ai-form__btn[data-field="type"]').forEach(b => {
-    b.classList.remove('ai-form__btn--active');
-  });
-
-  await renderChatList();
-  await renderMessages();
-
-  // 默认选中个人交易
-  const personalBtn = document.querySelector('.ai-form__btn[data-field="type"][data-value="personal"]');
-  if (personalBtn) {
-    personalBtn.click();
-  }
-
-  el.aiInput.focus();
 }
 
 // 发送消息
