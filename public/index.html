@@ -509,60 +509,57 @@ body {
 }
 .channel-tab--active { border-color: var(--gold); background: var(--gold-soft); color: var(--gold-text); }
 
-/* ═══ 智能解析入口 ═══ */
-.parse-bar { margin-bottom: 16px; }
-.parse-bar__label {
-  font-size: 0.65rem; font-weight: 600; text-transform: uppercase;
-  letter-spacing: 0.06em; color: var(--gold-text); margin-bottom: 6px; display: block;
+/* ═══ 类型指示器 ═══ */
+.seller-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
 }
-.parse-bar__input {
-  width: 100%; min-height: 64px; border: 1px dashed var(--border-strong);
-  border-radius: var(--radius-sm); padding: 10px 12px; font-family: inherit;
-  font-size: 0.85rem; background: var(--surface-2); color: var(--text);
-  outline: none; resize: vertical; line-height: 1.5;
-  transition: border-color 0.2s, box-shadow 0.2s;
+.seller-indicator__label {
+  font-size: 0.75rem;
+  color: var(--text-2);
+  font-weight: 500;
 }
-.parse-bar__input:focus { border-color: var(--gold); border-style: solid; box-shadow: 0 0 0 3px rgba(184,134,11,0.10); background: var(--surface); }
-.parse-bar__actions { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
-.parse-btn {
-  height: 36px; padding: 0 16px; border: 1px solid var(--gold);
-  border-radius: var(--radius-sm); background: var(--gold-soft); color: var(--gold-text);
-  font-family: inherit; font-size: 0.82rem; font-weight: 600; cursor: pointer;
-  transition: all 0.2s; display: flex; align-items: center; gap: 6px;
+.seller-indicator__value {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--gold-soft);
+  color: var(--gold-text);
 }
-.parse-btn:hover { background: var(--gold); color: #fff; }
-.parse-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-.parse-btn__spinner {
-  width: 14px; height: 14px; border: 2px solid currentColor;
-  border-top-color: transparent; border-radius: 50%;
-  animation: parseSpin 0.7s linear infinite; display: none;
+.seller-indicator__switch {
+  margin-left: auto;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-2);
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
 }
-.parse-btn--loading .parse-btn__spinner { display: block; }
-@keyframes parseSpin { to { transform: rotate(360deg); } }
-.parse-bar__hint { font-size: 0.68rem; color: var(--text-3); }
-.parse-bar__warning {
-  margin-top: 8px; padding: 8px 12px; border-radius: var(--radius-sm);
-  background: var(--gold-soft); color: var(--gold-text);
-  font-size: 0.75rem; font-weight: 500; display: none;
+.seller-indicator__switch:hover {
+  border-color: var(--gold);
+  background: var(--gold-soft);
+  color: var(--gold-text);
 }
-.parse-bar__warning--visible { display: block; }
-.parse-bar__toggle {
-  width: 100%; height: 38px; border: 1px dashed var(--border-strong);
-  border-radius: var(--radius-sm); background: var(--surface-2); color: var(--gold-text);
-  font-family: inherit; font-size: 0.82rem; font-weight: 600; cursor: pointer;
-  transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;
-}
-.parse-bar__toggle:hover { border-color: var(--gold); background: var(--gold-soft); }
-.parse-bar__body { margin-top: 10px; animation: parseBodyIn 0.2s var(--ease); }
-@keyframes parseBodyIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
-.parse-bar__clear {
-  margin-left: auto; height: 36px; padding: 0 12px; border: 1px solid var(--border);
-  border-radius: var(--radius-sm); background: transparent; color: var(--text-3);
-  font-family: inherit; font-size: 0.78rem; cursor: pointer; transition: all 0.2s;
-}
-.parse-bar__clear:hover { border-color: var(--text-3); color: var(--text); }
 
-/* Rate stepper: − 输入 + 三格一体 */
+/* 智能解析相关样式（隐藏，保留元素以防JS报错） */
+.parse-bar, .parse-bar__toggle, .parse-bar__body, .parse-bar__input,
+.parse-btn, .parse-bar__hint, .parse-bar__warning, .parse-bar__clear { display: none; }
+
+/* ═══ FORM ═══ */
+.form-field { margin-bottom: 14px; }
 .rate-stepper { display: flex; align-items: center; gap: 8px; }
 .rate-stepper .input-with-suffix { flex: 1; min-width: 0; position: relative; display: flex; align-items: center; }
 .rate-stepper .input-with-suffix .form-field__input { padding-right: 28px; }
@@ -1092,19 +1089,11 @@ body {
       <div class="modal__title" id="modalTitle">记一笔</div>
       <form id="txnForm" novalidate>
 
-        <!-- 智能解析入口（默认折叠，点击展开） -->
-        <div class="parse-bar">
-          <button type="button" class="parse-bar__toggle" id="parseToggle">✨ 智能解析</button>
-          <div class="parse-bar__body" id="parseBody" style="display:none;">
-            <label class="parse-bar__label">粘贴或语音描述</label>
-            <textarea class="parse-bar__input" id="parseInput" placeholder="例：苏苏的 Chanel CF 中号，额度，售价 35000，我抽 1 个点&#10;（iOS 键盘可点麦克风语音输入）"></textarea>
-            <div class="parse-bar__actions">
-              <button type="button" class="parse-btn" id="parseBtn"><span class="parse-btn__spinner"></span><span class="parse-btn__text">解析</span></button>
-              <span class="parse-bar__hint">自动提取商品、渠道、金额</span>
-              <button type="button" class="parse-bar__clear" id="parseClear">清空</button>
-            </div>
-            <div class="parse-bar__warning" id="parseWarning">⚠️ 解析可信度较低，请仔细核对金额和渠道后再保存</div>
-          </div>
+        <!-- 类型显示和切换 -->
+        <div class="seller-indicator">
+          <span class="seller-indicator__label">当前：</span>
+          <span class="seller-indicator__value" id="sellerIndicator">个人</span>
+          <button type="button" class="seller-indicator__switch" id="sellerSwitch">切换公司</button>
         </div>
 
         <div class="form-row">

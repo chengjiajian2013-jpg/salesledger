@@ -142,6 +142,7 @@ const el = {
   monthlyList: $('#monthlyList'),
   fab: $('#fab'),
   modalOverlay: $('#modalOverlay'), modalTitle: $('#modalTitle'),
+  sellerIndicator: $('#sellerIndicator'), sellerSwitch: $('#sellerSwitch'),
   txnForm: $('#txnForm'),
   inputDate: $('#inputDate'), inputProduct: $('#inputProduct'),
   inputCost: $('#inputCost'), inputPrice: $('#inputPrice'),
@@ -264,6 +265,19 @@ function selectSeller(seller, skipRefresh = false) {
   }
 }
 
+// 更新模态框中的类型指示器
+function updateSellerIndicator() {
+  if (!el.sellerIndicator || !el.sellerSwitch) return;
+
+  if (currentSeller === 'personal') {
+    el.sellerIndicator.textContent = '个人';
+    el.sellerSwitch.textContent = '切换公司';
+  } else {
+    el.sellerIndicator.textContent = '公司';
+    el.sellerSwitch.textContent = '切换个人';
+  }
+}
+
 // ═══ 视图切换 ═══
 function switchView(view) {
   currentView = view;
@@ -377,6 +391,7 @@ function openCreateModal() {
   clearErrors();
   resetParse();
   loadOptions();
+  updateSellerIndicator();
   el.modalOverlay.classList.add('modal-overlay--open');
   setTimeout(() => el.inputProduct.focus(), 300);
 }
@@ -836,6 +851,15 @@ function bindEvents() {
   el.fab.addEventListener('click', openCreateModal);
   el.modalOverlay.addEventListener('click', (e) => { if (e.target === el.modalOverlay) closeModal(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+
+  // 类型切换按钮
+  if (el.sellerSwitch) {
+    el.sellerSwitch.addEventListener('click', () => {
+      const newSeller = currentSeller === 'personal' ? 'company' : 'personal';
+      selectSeller(newSeller, true);
+      updateSellerIndicator();
+    });
+  }
 
   el.sellerTabs.addEventListener('click', (e) => {
     const btn = e.target.closest('.seller-tab');
@@ -2013,11 +2037,18 @@ function openTransactionModal(result, formInfo, goodsList) {
     selectSeller(formInfo.type, true);
   }
 
+  // 设置模态框颜色
+  const modal = document.getElementById('modal');
+  modal.className = 'modal modal--' + currentSeller;
+
   // 清除表单并打开模态框
   editingId = null;
   el.txnForm.reset();
   selectChannel('quota');
   clearErrors();
+
+  // 更新类型指示器
+  updateSellerIndicator();
 
   // 填充数据
   const today = new Date().toISOString().split('T')[0];
