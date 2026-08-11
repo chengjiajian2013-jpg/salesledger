@@ -413,6 +413,42 @@ body {
   font-family: var(--font-numeric);
 }
 .ai-form__input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(184,134,11,0.10); }
+.ai-form__stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ai-form__stepper .ai-form__input {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+}
+.ai-form__stepper-btn {
+  width: 36px;
+  height: 38px;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 1.1rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  line-height: 1;
+  padding: 0;
+}
+.ai-form__stepper-btn:hover {
+  border-color: var(--gold);
+  background: var(--gold-soft);
+  color: var(--gold-text);
+}
+.ai-form__stepper-btn:active {
+  transform: scale(0.93);
+}
 .ai-form__actions {
   display: flex; gap: 8px; margin-top: 8px;
 }
@@ -1030,12 +1066,20 @@ body {
               <div class="ai-form__row">
                 <div class="ai-form__group" id="formCostGroup" style="display:none;">
                   <label class="ai-form__label">成本折扣</label>
-                  <input type="text" inputmode="decimal" class="ai-form__input" id="formCost" placeholder="例：0.82" data-number-only>
+                  <div class="ai-form__stepper">
+                    <button type="button" class="ai-form__stepper-btn" data-target="formCost" data-action="decrease">−</button>
+                    <input type="text" inputmode="decimal" class="ai-form__input" id="formCost" placeholder="0.8" data-number-only>
+                    <button type="button" class="ai-form__stepper-btn" data-target="formCost" data-action="increase">+</button>
+                  </div>
                 </div>
 
                 <div class="ai-form__group">
                   <label class="ai-form__label">卖价折扣</label>
-                  <input type="text" inputmode="decimal" class="ai-form__input" id="formPrice" placeholder="例：0.88" data-number-only>
+                  <div class="ai-form__stepper">
+                    <button type="button" class="ai-form__stepper-btn" data-target="formPrice" data-action="decrease">−</button>
+                    <input type="text" inputmode="decimal" class="ai-form__input" id="formPrice" placeholder="0.89" data-number-only>
+                    <button type="button" class="ai-form__stepper-btn" data-target="formPrice" data-action="increase">+</button>
+                  </div>
                 </div>
               </div>
 

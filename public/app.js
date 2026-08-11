@@ -1190,11 +1190,11 @@ async function handleNewChat() {
   const newChat = await createChat();
   currentChatId = newChat.id;
 
-  // 清空表单数据
-  formData = { type: '', quota: '', cost: '', price: '', goods: [] };
+  // 清空表单数据并设置默认值
+  formData = { type: '', quota: '', cost: '0.8', price: '0.89', goods: [] };
   if (formQuota) formQuota.value = '';
-  if (formCost) formCost.value = '';
-  if (formPrice) formPrice.value = '';
+  if (formCost) formCost.value = '0.8';
+  if (formPrice) formPrice.value = '0.89';
   if (el.aiInput) el.aiInput.value = '';
 
   // 清空货物列表，保留一个空项
@@ -1598,6 +1598,37 @@ if (formCost) restrictNumberInput(formCost);
 if (formPrice) restrictNumberInput(formPrice);
 goodsItems.querySelectorAll('.goods-amount').forEach(input => restrictNumberInput(input));
 
+// 步进器按钮事件处理
+document.addEventListener('click', (e) => {
+  const stepperBtn = e.target.closest('.ai-form__stepper-btn');
+  if (!stepperBtn) return;
+
+  const targetId = stepperBtn.dataset.target;
+  const action = stepperBtn.dataset.action;
+  const input = document.getElementById(targetId);
+
+  if (!input) return;
+
+  let value = parseFloat(input.value) || 0;
+  const step = 0.01; // 每次增减0.01
+
+  if (action === 'increase') {
+    value = Math.min(value + step, 1); // 最大1
+  } else if (action === 'decrease') {
+    value = Math.max(value - step, 0); // 最小0
+  }
+
+  input.value = value.toFixed(2);
+
+  // 触发input事件以保存数据
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+});
+
+// 设置默认值
+if (formCost && !formCost.value) formCost.value = '0.8';
+if (formPrice && !formPrice.value) formPrice.value = '0.89';
+
+
 // 添加货物项
 if (addGoodsBtn) {
   addGoodsBtn.addEventListener('click', () => {
@@ -1817,10 +1848,10 @@ if (formSubmit) {
     // 清空第一个货物项的商品名称
     const firstGoodsName = goodsItems.querySelector('.goods-name');
     if (firstGoodsName) firstGoodsName.value = '';
-    formCost.value = '';
-    formPrice.value = '';
+    formCost.value = '0.8';
+    formPrice.value = '0.89';
     formCostGroup.style.display = 'none';
-    formData = { type: null, goods: [] };
+    formData = { type: null, cost: '0.8', price: '0.89', goods: [] };
     updateTotalGoods();
   });
 }
