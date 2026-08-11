@@ -2117,6 +2117,13 @@ function openTransactionModal(result, formInfo, goodsList) {
     // 个人交易：售价=额度总额，成本留空（默认不填）
     el.inputPrice.value = formInfo.quota.toFixed(2);
     el.inputCost.value = '';  // 成本留空
+
+    // 根据实际成本折扣和卖价折扣计算利润率
+    if (formInfo.cost && formInfo.price) {
+      const profitRate = (formInfo.price - formInfo.cost) * 100;
+      el.inputRate.value = profitRate.toFixed(1).replace(/\.0$/, '');
+    }
+
     el.inputNote.value = `AI计算：额度${formInfo.quota}元，利润${result.profit.toFixed(2)}元，客户支付${result.customerPay.toFixed(2)}元`;
   }
 
