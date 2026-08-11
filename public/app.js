@@ -1260,6 +1260,18 @@ if (aiToggleSidebar) {
   });
 }
 
+// 点击主区域（右侧）自动收起侧边栏
+if (aiMain) {
+  aiMain.addEventListener('click', () => {
+    if (!sidebarCollapsed) {
+      sidebarCollapsed = true;
+      if (aiSidebar) aiSidebar.classList.add('ai-sidebar--collapsed');
+      if (aiMain) aiMain.classList.add('ai-main--expanded');
+      if (aiToggleSidebar) aiToggleSidebar.textContent = '☰';
+    }
+  });
+}
+
 // 交互式表单
 const aiForm = document.getElementById('aiForm');
 const aiFormToggle = document.getElementById('aiFormToggle');
@@ -1830,11 +1842,11 @@ if (aiEndBtn) {
 
 // 录入交易明细按钮
 if (aiRecordBtn) {
-  aiRecordBtn.addEventListener('click', () => {
+  aiRecordBtn.addEventListener('click', async () => {
     if (!currentChatId) return;
 
-    const chat = getChat(currentChatId);
-    if (!chat || chat.messages.length === 0) return;
+    const chat = await getChat(currentChatId);
+    if (!chat || !chat.messages || chat.messages.length === 0) return;
 
     // 获取最后一条AI回复
     const lastAssistantMsg = [...chat.messages].reverse().find(m => m.role === 'assistant');
