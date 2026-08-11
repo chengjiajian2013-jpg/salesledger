@@ -269,12 +269,19 @@ function selectSeller(seller, skipRefresh = false) {
 function updateSellerIndicator() {
   if (!el.sellerIndicator || !el.sellerSwitch) return;
 
+  // 更新文本
   if (currentSeller === 'personal') {
     el.sellerIndicator.textContent = '个人';
     el.sellerSwitch.textContent = '切换公司';
   } else {
     el.sellerIndicator.textContent = '公司';
     el.sellerSwitch.textContent = '切换个人';
+  }
+
+  // 更新模态框颜色
+  const modal = document.getElementById('modal');
+  if (modal) {
+    modal.className = 'modal modal--' + currentSeller;
   }
 }
 
