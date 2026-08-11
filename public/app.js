@@ -1351,7 +1351,12 @@ async function loadSavedFormData() {
 
   try {
     const data = await getFormData(currentChatId);
-    if (!data) return;
+
+    // 如果没有数据，清空表单
+    if (!data) {
+      clearFormData();
+      return;
+    }
 
     // 恢复交易类型
     if (data.type) {
@@ -1370,16 +1375,34 @@ async function loadSavedFormData() {
           formCostGroup.style.display = 'none';
         }
       }
+    } else {
+      // 没有交易类型，清空按钮状态
+      document.querySelectorAll('.ai-form__btn[data-field="type"]').forEach(b => {
+        b.classList.remove('ai-form__btn--active');
+      });
+      formCostGroup.style.display = 'none';
     }
 
     // 恢复额度总计
-    if (data.quota) formQuota.value = data.quota;
+    if (data.quota) {
+      formQuota.value = data.quota;
+    } else {
+      formQuota.value = '';
+    }
 
     // 恢复成本折扣
-    if (data.cost) formCost.value = data.cost;
+    if (data.cost) {
+      formCost.value = data.cost;
+    } else {
+      formCost.value = '0.8';
+    }
 
     // 恢复卖价折扣
-    if (data.price) formPrice.value = data.price;
+    if (data.price) {
+      formPrice.value = data.price;
+    } else {
+      formPrice.value = '0.89';
+    }
 
     // 恢复货物明细
     if (data.goods && data.goods.length > 0) {
@@ -1399,11 +1422,21 @@ async function loadSavedFormData() {
       });
 
       updateTotalGoods();
+    } else {
+      // 没有货物数据，清空并保留一个空项
+      while (goodsItems.children.length > 0) {
+        goodsItems.removeChild(goodsItems.lastChild);
+      }
+      const item = createGoodsItem('', '');
+      goodsItems.appendChild(item);
+      updateTotalGoods();
     }
 
     // 恢复输入框内容
     if (data.input_text && el.aiInput) {
       el.aiInput.value = data.input_text;
+    } else if (el.aiInput) {
+      el.aiInput.value = '';
     }
 
     // 更新表单内容高度，防止按钮被裁剪
@@ -1415,6 +1448,29 @@ async function loadSavedFormData() {
   } catch (e) {
     console.error('加载暂存数据失败:', e);
   }
+}
+
+// 清空表单数据
+function clearFormData() {
+  // 清空交易类型
+  document.querySelectorAll('.ai-form__btn[data-field="type"]').forEach(b => {
+    b.classList.remove('ai-form__btn--active');
+  });
+  formCostGroup.style.display = 'none';
+
+  // 清空输入框
+  if (formQuota) formQuota.value = '';
+  if (formCost) formCost.value = '0.8';
+  if (formPrice) formPrice.value = '0.89';
+  if (el.aiInput) el.aiInput.value = '';
+
+  // 清空货物列表，保留一个空项
+  while (goodsItems.children.length > 0) {
+    goodsItems.removeChild(goodsItems.lastChild);
+  }
+  const item = createGoodsItem('', '');
+  goodsItems.appendChild(item);
+  updateTotalGoods();
 }
 
 // 保存表单数据到数据库
