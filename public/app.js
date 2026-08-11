@@ -540,8 +540,8 @@ async function updateHeaderMonthlyTotal() {
     const personalData = personalRes.data || personalRes;
 
     const BASE_SALARY = 8000; // 公司底薪
-    const companyTotal = (companyData.profit || 0) + BASE_SALARY;
-    const personalTotal = personalData.profit || 0;
+    const companyTotal = (companyData.totalProfit || 0) + BASE_SALARY;
+    const personalTotal = personalData.totalProfit || 0;
     const monthlyTotal = companyTotal + personalTotal;
 
     // 更新显示
