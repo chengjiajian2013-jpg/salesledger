@@ -1042,11 +1042,12 @@ function renderMessages() {
     el.aiMessages.innerHTML = '<div style="text-align:center;color:var(--text-3);padding:40px;">选择或创建一个对话开始</div>';
     // 隐藏录入按钮
     if (el.aiRecordBar) el.aiRecordBar.style.display = 'none';
-    // 恢复输入
+    // 显示输入区域
     el.aiInput.disabled = false;
     el.aiSend.disabled = false;
+    el.aiInput.style.display = '';
     const aiEndBtn = document.getElementById('aiEndBtn');
-    if (aiEndBtn) aiEndBtn.disabled = false;
+    if (aiEndBtn) { aiEndBtn.disabled = false; aiEndBtn.style.display = ''; }
     return;
   }
 
@@ -1055,11 +1056,12 @@ function renderMessages() {
     el.aiMessages.innerHTML = '<div style="text-align:center;color:var(--text-3);padding:40px;">输入你的问题，AI助手会帮你计算</div>';
     // 隐藏录入按钮
     if (el.aiRecordBar) el.aiRecordBar.style.display = 'none';
-    // 恢复输入
+    // 显示输入区域
     el.aiInput.disabled = false;
     el.aiSend.disabled = false;
+    el.aiInput.style.display = '';
     const aiEndBtn = document.getElementById('aiEndBtn');
-    if (aiEndBtn) aiEndBtn.disabled = false;
+    if (aiEndBtn) { aiEndBtn.disabled = false; aiEndBtn.style.display = ''; }
     return;
   }
 
@@ -1068,19 +1070,19 @@ function renderMessages() {
   if (isEnded) {
     // 显示录入按钮
     if (el.aiRecordBar) el.aiRecordBar.style.display = 'block';
-    // 禁用输入和发送
-    el.aiInput.disabled = true;
-    el.aiSend.disabled = true;
+    // 隐藏输入区域和按钮
+    el.aiInput.style.display = 'none';
+    el.aiSend.style.display = 'none';
     const aiEndBtn = document.getElementById('aiEndBtn');
-    if (aiEndBtn) aiEndBtn.disabled = true;
+    if (aiEndBtn) aiEndBtn.style.display = 'none';
   } else {
     // 隐藏录入按钮
     if (el.aiRecordBar) el.aiRecordBar.style.display = 'none';
-    // 恢复输入
-    el.aiInput.disabled = false;
-    el.aiSend.disabled = false;
+    // 显示输入区域和按钮
+    el.aiInput.style.display = '';
+    el.aiSend.style.display = '';
     const aiEndBtn = document.getElementById('aiEndBtn');
-    if (aiEndBtn) aiEndBtn.disabled = false;
+    if (aiEndBtn) aiEndBtn.style.display = '';
   }
 
   el.aiMessages.innerHTML = chat.messages.map((msg, idx) => {
@@ -1797,6 +1799,9 @@ function openTransactionModal(result, formInfo) {
   // 切换到交易明细视图
   switchView('transactions');
 
+  // 确保FAB显示
+  el.fab.style.display = 'flex';
+
   // 根据类型切换卖家
   if (formInfo) {
     currentSeller = formInfo.type;
@@ -1804,10 +1809,15 @@ function openTransactionModal(result, formInfo) {
     el.sellerTabs.querySelectorAll('.seller-tab').forEach(tab => {
       tab.classList.toggle('seller-tab--active', tab.dataset.seller === formInfo.type);
     });
+    // 更新状态
+    setState({ filters: { ...state.filters, seller: formInfo.type } });
   }
 
-  // 打开模态框
-  openModal();
+  // 清除表单并打开模态框
+  editingId = null;
+  el.txnForm.reset();
+  selectChannel('quota');
+  clearErrors();
 
   // 填充数据
   const today = new Date().toISOString().split('T')[0];
@@ -1815,7 +1825,7 @@ function openTransactionModal(result, formInfo) {
 
   // 根据类型填充
   if (formInfo && formInfo.type === 'company') {
-    // 公司交易：售价=给公司的钱
+    // 公司交易：售价=客户支付，成本=客户支付-给公司的钱
     el.inputPrice.value = result.customerPay.toFixed(2);
     el.inputCost.value = (result.customerPay - result.toCompany).toFixed(2) || '0';
   } else {
@@ -1826,6 +1836,10 @@ function openTransactionModal(result, formInfo) {
 
   // 添加备注
   el.inputNote.value = `AI计算：客户支付${result.customerPay.toFixed(2)}元`;
+
+  // 打开模态框
+  el.modalOverlay.classList.add('modal-overlay--open');
+  setTimeout(() => el.inputProduct.focus(), 300);
 
   // 更新利润预览
   updateProfitPreview();
