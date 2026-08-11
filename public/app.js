@@ -1892,9 +1892,7 @@ if (formSubmit) {
         const g = formData.goods[0];
         question += `，实际货物${g.name ? g.name + '：' : ''}${totalGoods}元`;
       }
-      if (excess > 0) {
-        question += `，超出${excess}元由公司承担折损`;
-      }
+      // 不要添加"由公司承担折损"，个人交易自己承担超额亏损
       question += `。帮我算：1.我的利润是多少；2.客户需要付多少钱`;
     } else {
       // 公司交易：计算客户实际支付和给公司的钱
