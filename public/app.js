@@ -1869,14 +1869,8 @@ function openTransactionModal(result, formInfo, goodsList) {
   el.fab.style.display = 'flex';
 
   // 根据类型切换卖家
-  if (formInfo) {
-    currentSeller = formInfo.type;
-    // 更新卖家标签
-    el.sellerTabs.querySelectorAll('.seller-tab').forEach(tab => {
-      tab.classList.toggle('seller-tab--active', tab.dataset.seller === formInfo.type);
-    });
-    // 更新状态
-    setState({ filters: { ...state.filters, seller: formInfo.type } });
+  if (formInfo && (formInfo.type === 'company' || formInfo.type === 'personal')) {
+    selectSeller(formInfo.type, true);
   }
 
   // 清除表单并打开模态框
