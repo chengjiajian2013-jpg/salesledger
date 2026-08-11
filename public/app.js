@@ -2180,7 +2180,8 @@ function parseGoodsFromAIResponse(aiResponse) {
       if (match) {
         const name = match[1].trim();
         const amount = parseFloat(match[2].replace(/,/g, ''));
-        if (amount > 0) {
+        // 过滤掉"总计"、"合计"等汇总行
+        if (amount > 0 && !name.match(/^(总计|合计|小计)$/)) {
           goods.push({ name, amount });
         }
       }
