@@ -2052,6 +2052,25 @@ if (aiRecordBtn) {
     let formInfo = null;
     let goodsList = [];
 
+    // 优先从AI回复中解析货物列表（因为用户可能追问修改，导致表单数据不准确）
+    goodsList = parseGoodsFromAIResponse(lastAssistantMsg.content);
+    console.log('从AI回复解析的货物:', goodsList);
+
+    // 如果AI回复中没有货物明细，尝试从第一条用户消息解析
+    if (goodsList.length === 0) {
+      const firstUserMsg = chat.messages.find(m => m.role === 'user');
+      if (firstUserMsg) {
+        goodsList = parseGoodsFromQuestion(firstUserMsg.content);
+        console.log('从用户消息解析的货物:', goodsList);
+      }
+    }
+
+    // 如果还是没有，最后尝试从表单数据获取
+    if (goodsList.length === 0 && savedFormData && savedFormData.goods) {
+      goodsList = savedFormData.goods;
+      console.log('从表单数据获取的货物:', goodsList);
+    }
+
     if (savedFormData) {
       // 使用数据库中的表单数据
       formInfo = {
@@ -2060,7 +2079,6 @@ if (aiRecordBtn) {
         price: parseFloat(savedFormData.price) || 0,
         cost: parseFloat(savedFormData.cost) || 0,
       };
-      goodsList = savedFormData.goods || [];
 
       // 但是交易类型要从AI回复中提取（优先级更高）
       const typeFromAI = parseTransactionTypeFromAI(lastAssistantMsg.content);
@@ -2073,7 +2091,6 @@ if (aiRecordBtn) {
       const firstUserMsg = chat.messages.find(m => m.role === 'user');
       if (firstUserMsg) {
         formInfo = parseFormFromQuestion(firstUserMsg.content);
-        goodsList = parseGoodsFromQuestion(firstUserMsg.content);
       }
 
       // 交易类型也从AI回复中提取
@@ -2084,7 +2101,7 @@ if (aiRecordBtn) {
     }
 
     console.log('最终表单信息:', formInfo);
-    console.log('货物列表:', goodsList);
+    console.log('最终货物列表:', goodsList);
     console.log('======================');
 
     // 打开录入模态框
@@ -2144,6 +2161,51 @@ function parseTransactionTypeFromAI(aiResponse) {
   }
 
   return null;
+}
+
+// 从AI回复中解析货物列表
+function parseGoodsFromAIResponse(aiResponse) {
+  const goods = [];
+
+  // 匹配 "**货物明细：**" 部分
+  // 格式1: "- cf黑金：45000元"
+  // 格式2: "- cf黑金：45000元（89折）"
+  const goodsSection = aiResponse.match(/\*\*货物明细[：:]\*\*([\s\S]*?)(?=\n\n|$)/);
+
+  if (goodsSection) {
+    const lines = goodsSection[1].split('\n');
+    for (const line of lines) {
+      // 匹配 "- 商品名：金额元" 或 "- 商品名：金额元（折扣）"
+      const match = line.match(/-\s*([^：:]+)[：:]\s*([\d,]+(?:\.\d+)?)\s*元/);
+      if (match) {
+        const name = match[1].trim();
+        const amount = parseFloat(match[2].replace(/,/g, ''));
+        if (amount > 0) {
+          goods.push({ name, amount });
+        }
+      }
+    }
+  }
+
+  // 如果货物明细部分没找到，尝试从交易信息中的货物总价部分解析
+  // 格式: "货物总价：51800元（cf黑金45000元 + 卡包6800元）"
+  if (goods.length === 0) {
+    const totalMatch = aiResponse.match(/货物总价[：:]\s*[\d,]+(?:\.\d+)?\s*元[（(]([^)）]+)[)）]/);
+    if (totalMatch) {
+      const itemsText = totalMatch[1];
+      // 匹配 "商品名金额元" 模式
+      const itemMatches = itemsText.matchAll(/([^+、，,]+?)([\d,]+(?:\.\d+)?)\s*元/g);
+      for (const match of itemMatches) {
+        const name = match[1].trim();
+        const amount = parseFloat(match[2].replace(/,/g, ''));
+        if (amount > 0) {
+          goods.push({ name, amount });
+        }
+      }
+    }
+  }
+
+  return goods;
 }
 
 // 从问题中解析表单信息
