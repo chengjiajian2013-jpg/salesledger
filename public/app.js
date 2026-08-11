@@ -1086,6 +1086,8 @@ function renderMessages() {
     el.aiSend.style.display = 'none';
     const aiEndBtn = document.getElementById('aiEndBtn');
     if (aiEndBtn) aiEndBtn.style.display = 'none';
+    const aiInputButtons = document.querySelector('.ai-input__buttons');
+    if (aiInputButtons) aiInputButtons.style.display = 'none';
   } else {
     // 隐藏录入按钮
     if (el.aiRecordBar) el.aiRecordBar.style.display = 'none';
@@ -1094,6 +1096,8 @@ function renderMessages() {
     el.aiSend.style.display = '';
     const aiEndBtn = document.getElementById('aiEndBtn');
     if (aiEndBtn) aiEndBtn.style.display = '';
+    const aiInputButtons = document.querySelector('.ai-input__buttons');
+    if (aiInputButtons) aiInputButtons.style.display = '';
   }
 
   el.aiMessages.innerHTML = chat.messages.map((msg, idx) => {
@@ -1677,13 +1681,18 @@ const aiRecordBtn = document.getElementById('aiRecordBtn');
 if (aiEndBtn) {
   aiEndBtn.addEventListener('click', () => {
     if (!currentChatId) {
-      alert('请先选择一个对话');
+      showToast('请先选择一个对话', 'error');
       return;
     }
 
     const chat = getChat(currentChatId);
     if (!chat || chat.messages.length === 0) {
-      alert('对话中没有内容');
+      showToast('对话中没有内容', 'error');
+      return;
+    }
+
+    // 确认弹窗
+    if (!confirm('确定要结束这个对话吗？结束后可以录入交易明细。')) {
       return;
     }
 
@@ -1694,10 +1703,12 @@ if (aiEndBtn) {
     // 显示录入按钮
     if (aiRecordBar) aiRecordBar.style.display = 'block';
 
-    // 禁用输入和发送
-    el.aiInput.disabled = true;
-    el.aiSend.disabled = true;
-    if (aiEndBtn) aiEndBtn.disabled = true;
+    // 隐藏输入框和按钮
+    el.aiInput.style.display = 'none';
+    el.aiSend.style.display = 'none';
+    aiEndBtn.style.display = 'none';
+    const aiInputButtons = document.querySelector('.ai-input__buttons');
+    if (aiInputButtons) aiInputButtons.style.display = 'none';
 
     showToast('对话已结束，可以录入交易明细', 'info');
   });
@@ -1811,27 +1822,38 @@ function parseFormFromQuestion(question) {
 function parseGoodsFromQuestion(question) {
   const goods = [];
 
-  // 匹配格式：商品名称：金额元 或 商品名称：金额元×折扣=结果元
-  // 例如："电视：30000元" 或 "电视：30000元×0.9=27000.00元"
-  const goodsRegex = /([一-龥_a-zA-Z]+)[：:]\s*([\d,]+\.?\d*)\s*元/g;
-  let match;
-  while ((match = goodsRegex.exec(question)) !== null) {
-    goods.push({
-      name: match[1],
-      amount: parseFloat(match[2].replace(/,/g, ''))
-    });
+  // 提取"货物明细："或"实际货物"后面的内容
+  let goodsSection = '';
+  const sectionMatch = question.match(/(?:货物明细|实际货物)[^：:]*[：:](.*?)(?:。|客户|帮我|$)/s);
+  if (sectionMatch) {
+    goodsSection = sectionMatch[1];
   }
 
-  // 如果没找到商品名称，尝试只匹配金额
-  if (goods.length === 0) {
-    const amountRegex = /([\d,]+\.?\d*)\s*元/g;
-    let idx = 0;
-    while ((match = amountRegex.exec(question)) !== null) {
+  // 匹配格式：商品名称：金额元
+  if (goodsSection) {
+    const goodsRegex = /([一-龥_a-zA-Z]+)[：:]\s*([\d,]+\.?\d*)\s*元/g;
+    let match;
+    while ((match = goodsRegex.exec(goodsSection)) !== null) {
       goods.push({
-        name: `商品${idx + 1}`,
-        amount: parseFloat(match[1].replace(/,/g, ''))
+        name: match[1],
+        amount: parseFloat(match[2].replace(/,/g, ''))
       });
-      idx++;
+    }
+  }
+
+  // 如果没找到商品名称，尝试从整个问题中提取（排除额度、成本等关键词）
+  if (goods.length === 0) {
+    const goodsRegex = /([一-龥_a-zA-Z]+)[：:]\s*([\d,]+\.?\d*)\s*元/g;
+    let match;
+    while ((match = goodsRegex.exec(question)) !== null) {
+      const name = match[1];
+      // 排除非商品名称的关键词
+      if (!['额度', '成本', '利润', '超额', '客户', '公司', '货物'].includes(name)) {
+        goods.push({
+          name: name,
+          amount: parseFloat(match[2].replace(/,/g, ''))
+        });
+      }
     }
   }
 
