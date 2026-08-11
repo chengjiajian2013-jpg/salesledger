@@ -1224,6 +1224,13 @@ function loadSavedFormData() {
       if (data.inputText && el.aiInput) {
         el.aiInput.value = data.inputText;
       }
+
+      // 更新表单内容高度，防止按钮被裁剪
+      if (formExpanded && aiFormContent) {
+        setTimeout(() => {
+          aiFormContent.style.maxHeight = aiFormContent.scrollHeight + 'px';
+        }, 50);
+      }
     }
   } catch (e) {
     console.error('加载暂存数据失败:', e);
