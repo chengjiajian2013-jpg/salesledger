@@ -1083,12 +1083,18 @@ async function renderMessages() {
     el.aiMessages.innerHTML = '<div style="text-align:center;color:var(--text-3);padding:40px;">输入你的问题，AI助手会帮你计算</div>';
     // 隐藏录入按钮
     if (el.aiRecordBar) el.aiRecordBar.style.display = 'none';
-    // 显示输入区域
+    // 显示输入区域和按钮（新对话或空对话）
     el.aiInput.disabled = false;
     el.aiSend.disabled = false;
     el.aiInput.style.display = '';
+    el.aiSend.style.display = '';
     const aiEndBtn = document.getElementById('aiEndBtn');
-    if (aiEndBtn) { aiEndBtn.disabled = false; aiEndBtn.style.display = ''; }
+    if (aiEndBtn) {
+      aiEndBtn.disabled = false;
+      aiEndBtn.style.display = '';
+    }
+    const aiInputButtons = document.querySelector('.ai-input__buttons');
+    if (aiInputButtons) aiInputButtons.style.display = '';
     return;
   }
 
@@ -1145,8 +1151,35 @@ async function renderMessages() {
 async function handleNewChat() {
   const newChat = await createChat();
   currentChatId = newChat.id;
+
+  // 清空表单数据
+  formData = { type: '', quota: '', cost: '', price: '', goods: [] };
+  if (formQuota) formQuota.value = '';
+  if (formCost) formCost.value = '';
+  if (formPrice) formPrice.value = '';
+  if (el.aiInput) el.aiInput.value = '';
+
+  // 清空货物列表，保留一个空项
+  if (goodsItems) {
+    goodsItems.innerHTML = '';
+    const item = createGoodsItem('', '');
+    goodsItems.appendChild(item);
+  }
+
+  // 重置交易类型按钮
+  document.querySelectorAll('.ai-form__btn[data-field="type"]').forEach(b => {
+    b.classList.remove('ai-form__btn--active');
+  });
+
   await renderChatList();
   await renderMessages();
+
+  // 默认选中个人交易
+  const personalBtn = document.querySelector('.ai-form__btn[data-field="type"][data-value="personal"]');
+  if (personalBtn) {
+    personalBtn.click();
+  }
+
   el.aiInput.focus();
 }
 
