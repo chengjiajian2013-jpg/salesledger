@@ -2099,9 +2099,17 @@ function openTransactionModal(result, formInfo, goodsList) {
   const today = new Date().toISOString().split('T')[0];
   el.inputDate.value = today;
 
-  // 填充商品名称（组合所有商品名称）
+  // 填充商品名称（格式：商品名金额+商品名金额）
   if (goodsList && goodsList.length > 0) {
-    const productNames = goodsList.map(g => g.name || `${g.amount}元`).join('+');
+    const productNames = goodsList.map(g => {
+      if (g.name && g.amount) {
+        return `${g.name}${g.amount}`;
+      } else if (g.name) {
+        return g.name;
+      } else {
+        return `${g.amount}元`;
+      }
+    }).join('+');
     el.inputProduct.value = productNames;
   }
 
