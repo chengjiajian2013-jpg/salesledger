@@ -142,7 +142,6 @@ const el = {
   monthlyList: $('#monthlyList'),
   fab: $('#fab'),
   modalOverlay: $('#modalOverlay'), modalTitle: $('#modalTitle'),
-  sellerIndicator: $('#sellerIndicator'), sellerSwitch: $('#sellerSwitch'),
   txnForm: $('#txnForm'),
   inputDate: $('#inputDate'), inputProduct: $('#inputProduct'),
   inputCost: $('#inputCost'), inputPrice: $('#inputPrice'),
@@ -267,15 +266,19 @@ function selectSeller(seller, skipRefresh = false) {
 
 // 更新模态框中的类型指示器
 function updateSellerIndicator() {
-  if (!el.sellerIndicator || !el.sellerSwitch) return;
+  // 动态获取元素，因为模态框内容可能在页面加载后才渲染
+  const sellerIndicator = document.getElementById('sellerIndicator');
+  const sellerSwitch = document.getElementById('sellerSwitch');
+
+  if (!sellerIndicator || !sellerSwitch) return;
 
   // 更新文本
   if (currentSeller === 'personal') {
-    el.sellerIndicator.textContent = '个人';
-    el.sellerSwitch.textContent = '切换公司';
+    sellerIndicator.textContent = '个人';
+    sellerSwitch.textContent = '切换公司';
   } else {
-    el.sellerIndicator.textContent = '公司';
-    el.sellerSwitch.textContent = '切换个人';
+    sellerIndicator.textContent = '公司';
+    sellerSwitch.textContent = '切换个人';
   }
 
   // 更新模态框颜色
@@ -859,14 +862,14 @@ function bindEvents() {
   el.modalOverlay.addEventListener('click', (e) => { if (e.target === el.modalOverlay) closeModal(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
 
-  // 类型切换按钮
-  if (el.sellerSwitch) {
-    el.sellerSwitch.addEventListener('click', () => {
+  // 类型切换按钮（使用事件委托，因为按钮在模态框内）
+  document.addEventListener('click', (e) => {
+    if (e.target && e.target.id === 'sellerSwitch') {
       const newSeller = currentSeller === 'personal' ? 'company' : 'personal';
       selectSeller(newSeller, true);
       updateSellerIndicator();
-    });
-  }
+    }
+  });
 
   el.sellerTabs.addEventListener('click', (e) => {
     const btn = e.target.closest('.seller-tab');
