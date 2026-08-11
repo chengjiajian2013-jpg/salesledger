@@ -1242,6 +1242,14 @@ async function handleNewChat() {
     await renderChatList();
     await renderMessages();
 
+    // 显示输入区域和表单操作按钮（新对话是活跃的）
+    const aiInputContainer = document.querySelector('.ai-input-container');
+    const formActionsContainer = document.querySelector('.ai-form__actions');
+    const addGoodsBtn = document.getElementById('addGoodsBtn');
+    if (aiInputContainer) aiInputContainer.style.display = 'flex';
+    if (formActionsContainer) formActionsContainer.style.display = 'flex';
+    if (addGoodsBtn) addGoodsBtn.style.display = 'block';
+
     // 默认选中个人交易
     const personalBtn = document.querySelector('.ai-form__btn[data-field="type"][data-value="personal"]');
     if (personalBtn) {
