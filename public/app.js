@@ -2054,12 +2054,24 @@ if (aiRecordBtn) {
         cost: parseFloat(savedFormData.cost) || 0,
       };
       goodsList = savedFormData.goods || [];
+
+      // 但是交易类型要从AI回复中提取（优先级更高）
+      const typeFromAI = parseTransactionTypeFromAI(lastAssistantMsg.content);
+      if (typeFromAI) {
+        formInfo.type = typeFromAI;
+      }
     } else {
       // 兜底：从对话历史中解析
       const firstUserMsg = chat.messages.find(m => m.role === 'user');
       if (firstUserMsg) {
         formInfo = parseFormFromQuestion(firstUserMsg.content);
         goodsList = parseGoodsFromQuestion(firstUserMsg.content);
+      }
+
+      // 交易类型也从AI回复中提取
+      const typeFromAI = parseTransactionTypeFromAI(lastAssistantMsg.content);
+      if (typeFromAI && formInfo) {
+        formInfo.type = typeFromAI;
       }
     }
 
@@ -2102,6 +2114,24 @@ function parseAIResponse(content) {
   }
 
   return result;
+}
+
+// 从AI回复中提取交易类型
+function parseTransactionTypeFromAI(aiResponse) {
+  // 匹配 "**交易类型：**个人交易" 或 "**交易类型：**公司交易"
+  const typeMatch = aiResponse.match(/\*\*交易类型[：:]\*\*\s*(个人交易|公司交易)/);
+  if (typeMatch) {
+    return typeMatch[1] === '个人交易' ? 'personal' : 'company';
+  }
+
+  // 兜底：匹配开头的 "好的，让我帮你算一下这笔个人交易" 或 "好的，这是公司交易"
+  if (aiResponse.includes('个人交易')) {
+    return 'personal';
+  } else if (aiResponse.includes('公司交易')) {
+    return 'company';
+  }
+
+  return null;
 }
 
 // 从问题中解析表单信息
