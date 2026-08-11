@@ -1034,13 +1034,32 @@ async function loadAIView() {
     }
   }
 
-  // 如果对话已关闭，隐藏输入区域，只显示录入按钮
+  // 如果对话已关闭，隐藏输入区域和表单操作按钮
   const aiInputContainer = document.querySelector('.ai-input-container');
+  const formActionsContainer = document.querySelector('.ai-form__actions');
+  const addGoodsBtn = document.getElementById('addGoodsBtn');
+
   if (aiInputContainer) {
     if (isClosed) {
       aiInputContainer.style.display = 'none';
     } else {
       aiInputContainer.style.display = 'flex';
+    }
+  }
+
+  if (formActionsContainer) {
+    if (isClosed) {
+      formActionsContainer.style.display = 'none';
+    } else {
+      formActionsContainer.style.display = 'flex';
+    }
+  }
+
+  if (addGoodsBtn) {
+    if (isClosed) {
+      addGoodsBtn.style.display = 'none';
+    } else {
+      addGoodsBtn.style.display = 'block';
     }
   }
 
