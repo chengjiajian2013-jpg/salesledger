@@ -958,15 +958,26 @@ function loadAIView() {
   // 加载当前对话的暂存数据
   loadSavedFormData();
 
-  // 确保表单展开
+  // 只在对话没有消息时展开表单（新对话）
   const aiFormContent = document.getElementById('aiFormContent');
   const aiFormToggle = document.getElementById('aiFormToggle');
+  const chat = currentChatId ? getChat(currentChatId) : null;
+  const hasMessages = chat && chat.messages && chat.messages.length > 0;
+
   if (aiFormContent && aiFormToggle) {
-    aiFormContent.classList.remove('ai-form__content--collapsed');
-    setTimeout(() => {
-      aiFormContent.style.maxHeight = aiFormContent.scrollHeight + 'px';
-    }, 100);
-    aiFormToggle.textContent = '收起';
+    if (!hasMessages && !chat?.ended) {
+      // 新对话且未结束：展开表单
+      aiFormContent.classList.remove('ai-form__content--collapsed');
+      setTimeout(() => {
+        aiFormContent.style.maxHeight = aiFormContent.scrollHeight + 'px';
+      }, 100);
+      aiFormToggle.textContent = '收起';
+    } else {
+      // 已有消息或已结束：收起表单
+      aiFormContent.style.maxHeight = '0';
+      aiFormContent.classList.add('ai-form__content--collapsed');
+      aiFormToggle.textContent = '展开';
+    }
   }
 
   // 设置侧边栏初始状态为隐藏
@@ -1713,12 +1724,14 @@ if (aiRecordBtn) {
     // 从对话历史中获取表单数据
     const firstUserMsg = chat.messages.find(m => m.role === 'user');
     let formInfo = null;
+    let goodsList = [];
     if (firstUserMsg) {
       formInfo = parseFormFromQuestion(firstUserMsg.content);
+      goodsList = parseGoodsFromQuestion(firstUserMsg.content);
     }
 
     // 打开录入模态框
-    openTransactionModal(result, formInfo);
+    openTransactionModal(result, formInfo, goodsList);
   });
 }
 
@@ -1794,8 +1807,39 @@ function parseFormFromQuestion(question) {
   return info;
 }
 
+// 从问题中解析商品列表
+function parseGoodsFromQuestion(question) {
+  const goods = [];
+
+  // 匹配格式：商品名称：金额元 或 商品名称：金额元×折扣=结果元
+  // 例如："电视：30000元" 或 "电视：30000元×0.9=27000.00元"
+  const goodsRegex = /([一-龥_a-zA-Z]+)[：:]\s*([\d,]+\.?\d*)\s*元/g;
+  let match;
+  while ((match = goodsRegex.exec(question)) !== null) {
+    goods.push({
+      name: match[1],
+      amount: parseFloat(match[2].replace(/,/g, ''))
+    });
+  }
+
+  // 如果没找到商品名称，尝试只匹配金额
+  if (goods.length === 0) {
+    const amountRegex = /([\d,]+\.?\d*)\s*元/g;
+    let idx = 0;
+    while ((match = amountRegex.exec(question)) !== null) {
+      goods.push({
+        name: `商品${idx + 1}`,
+        amount: parseFloat(match[1].replace(/,/g, ''))
+      });
+      idx++;
+    }
+  }
+
+  return goods;
+}
+
 // 打开交易录入模态框
-function openTransactionModal(result, formInfo) {
+function openTransactionModal(result, formInfo, goodsList) {
   // 切换到交易明细视图
   switchView('transactions');
 
@@ -1823,19 +1867,26 @@ function openTransactionModal(result, formInfo) {
   const today = new Date().toISOString().split('T')[0];
   el.inputDate.value = today;
 
-  // 根据类型填充
-  if (formInfo && formInfo.type === 'company') {
-    // 公司交易：售价=客户支付，成本=客户支付-给公司的钱
-    el.inputPrice.value = result.customerPay.toFixed(2);
-    el.inputCost.value = (result.customerPay - result.toCompany).toFixed(2) || '0';
-  } else {
-    // 个人交易：售价=客户支付，成本=客户支付-利润
-    el.inputPrice.value = result.customerPay.toFixed(2);
-    el.inputCost.value = (result.customerPay - result.profit).toFixed(2) || '0';
+  // 填充商品名称（组合所有商品名称）
+  if (goodsList && goodsList.length > 0) {
+    const productNames = goodsList.map(g => g.name || `${g.amount}元`).join('+');
+    el.inputProduct.value = productNames;
   }
 
-  // 添加备注
-  el.inputNote.value = `AI计算：客户支付${result.customerPay.toFixed(2)}元`;
+  // 根据类型填充
+  if (formInfo && formInfo.type === 'company') {
+    // 公司交易：售价=额度总额，款项去向=给公司的钱
+    el.inputPrice.value = formInfo.quota.toFixed(2);
+    el.inputCost.value = '0';
+    // 给公司的钱填到款项去向和备注
+    el.inputAccount.value = `给公司：${result.toCompany.toFixed(2)}元`;
+    el.inputNote.value = `AI计算：额度${formInfo.quota}元，给公司${result.toCompany.toFixed(2)}元，客户支付${result.customerPay.toFixed(2)}元`;
+  } else {
+    // 个人交易：售价=额度总额，成本=额度总额-利润
+    el.inputPrice.value = formInfo.quota.toFixed(2);
+    el.inputCost.value = (formInfo.quota - result.profit).toFixed(2) || '0';
+    el.inputNote.value = `AI计算：额度${formInfo.quota}元，利润${result.profit.toFixed(2)}元，客户支付${result.customerPay.toFixed(2)}元`;
+  }
 
   // 打开模态框
   el.modalOverlay.classList.add('modal-overlay--open');
@@ -1845,6 +1896,7 @@ function openTransactionModal(result, formInfo) {
   updateProfitPreview();
 
   showToast('已自动填充交易数据，请确认后保存', 'info');
+}
 }
 
 } // end of initApp()
