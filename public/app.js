@@ -1858,13 +1858,27 @@ if (aiRecordBtn) {
     // 解析AI回复中的数值
     const result = parseAIResponse(lastAssistantMsg.content);
 
-    // 从对话历史中获取表单数据
-    const firstUserMsg = chat.messages.find(m => m.role === 'user');
+    // 从数据库获取表单数据
+    const savedFormData = await getFormData(currentChatId);
     let formInfo = null;
     let goodsList = [];
-    if (firstUserMsg) {
-      formInfo = parseFormFromQuestion(firstUserMsg.content);
-      goodsList = parseGoodsFromQuestion(firstUserMsg.content);
+
+    if (savedFormData) {
+      // 使用数据库中的表单数据
+      formInfo = {
+        type: savedFormData.type || 'personal',
+        quota: parseFloat(savedFormData.quota) || 0,
+        price: parseFloat(savedFormData.price) || 0,
+        cost: parseFloat(savedFormData.cost) || 0,
+      };
+      goodsList = savedFormData.goods || [];
+    } else {
+      // 兜底：从对话历史中解析
+      const firstUserMsg = chat.messages.find(m => m.role === 'user');
+      if (firstUserMsg) {
+        formInfo = parseFormFromQuestion(firstUserMsg.content);
+        goodsList = parseGoodsFromQuestion(firstUserMsg.content);
+      }
     }
 
     // 打开录入模态框
