@@ -2075,7 +2075,7 @@ if (aiRecordBtn) {
       // 使用数据库中的表单数据
       formInfo = {
         type: savedFormData.type || 'personal',
-        quota: parseFloat(savedFormData.quota) || 0,
+        quota: parseFloat(savedFormData.quota) || result.quota || 0,  // 优先用表单数据，其次用AI解析的
         price: parseFloat(savedFormData.price) || 0,
         cost: parseFloat(savedFormData.cost) || 0,
       };
@@ -2091,6 +2091,11 @@ if (aiRecordBtn) {
       const firstUserMsg = chat.messages.find(m => m.role === 'user');
       if (firstUserMsg) {
         formInfo = parseFormFromQuestion(firstUserMsg.content);
+      }
+
+      // 如果还没有额度，使用AI解析的
+      if (formInfo && formInfo.quota === 0 && result.quota > 0) {
+        formInfo.quota = result.quota;
       }
 
       // 交易类型也从AI回复中提取
@@ -2115,31 +2120,43 @@ function parseAIResponse(content) {
     customerPay: 0,    // 客户支付
     toCompany: 0,      // 给公司的钱
     profit: 0,         // 利润
-    excess: 0          // 超额
+    excess: 0,         // 超额
+    quota: 0           // 额度
   };
 
-  // 匹配"客户支付"或"客户实际支付"
-  const customerPayMatch = content.match(/客户(?:实际)?支付[：:]\s*([\d,]+\.?\d*)\s*元/);
-  if (customerPayMatch) {
-    result.customerPay = parseFloat(customerPayMatch[1].replace(/,/g, ''));
+  // 匹配"客户支付"部分的"合计"金额
+  // 格式：**客户支付：**\n- xxx\n- 合计：**45500元**
+  const customerPaySection = content.match(/\*\*客户(?:实际)?(?:支付|需支付)[：:]\*\*([\s\S]*?)(?=\n\n|\*\*|$)/);
+  if (customerPaySection) {
+    const totalMatch = customerPaySection[1].match(/合计[：:]\s*\*?\*?([\d,]+(?:\.\d+)?)\s*元/);
+    if (totalMatch) {
+      result.customerPay = parseFloat(totalMatch[1].replace(/,/g, ''));
+    }
   }
 
   // 匹配"给公司的钱"
-  const toCompanyMatch = content.match(/给公司的钱[：:]\s*([\d,]+\.?\d*)\s*元/);
+  const toCompanyMatch = content.match(/给公司的钱[：:]\s*([\d,]+(?:\.\d+)?)\s*元/);
   if (toCompanyMatch) {
     result.toCompany = parseFloat(toCompanyMatch[1].replace(/,/g, ''));
   }
 
-  // 匹配"利润"
-  const profitMatch = content.match(/利润[：:]\s*([\d,]+\.?\d*)\s*元/);
+  // 匹配"利润"（可能带加粗）
+  // 格式：你的实际利润：4590 - 88 = **4502元**
+  const profitMatch = content.match(/(?:实际)?利润[：:]\s*[\d,\s\-+×().]*?\*?\*?([\d,]+(?:\.\d+)?)\s*元/);
   if (profitMatch) {
     result.profit = parseFloat(profitMatch[1].replace(/,/g, ''));
   }
 
-  // 匹配"超额"
-  const excessMatch = content.match(/超额\s*([\d,]+\.?\d*)\s*元/);
+  // 匹配"超额部分"
+  const excessMatch = content.match(/超额(?:部分)?[：:]\s*([\d,]+(?:\.\d+)?)\s*元/);
   if (excessMatch) {
     result.excess = parseFloat(excessMatch[1].replace(/,/g, ''));
+  }
+
+  // 匹配"额度"
+  const quotaMatch = content.match(/额度[：:]\s*([\d,]+(?:\.\d+)?)\s*元/);
+  if (quotaMatch) {
+    result.quota = parseFloat(quotaMatch[1].replace(/,/g, ''));
   }
 
   return result;
