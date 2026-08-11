@@ -14,8 +14,8 @@ database_id = "1a88bdc1-98a3-462f-8f48-8dad0730f6ad"
 
 [vars]
 ENV = "development"
-ACCESS_KEY = "1234"
-# 生产密码通过 Cloudflare Secret 配置
+ACCESS_KEY = "0725"
+# 生产密码通过 wrangler.toml 配置
 
 # 测试环境配置
 [env.test]
