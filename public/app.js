@@ -1897,6 +1897,5 @@ function openTransactionModal(result, formInfo, goodsList) {
 
   showToast('已自动填充交易数据，请确认后保存', 'info');
 }
-}
 
 } // end of initApp()
