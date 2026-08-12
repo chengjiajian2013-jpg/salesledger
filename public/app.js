@@ -2099,9 +2099,9 @@ if (aiRecordBtn) {
         formInfo.quota = result.quota;
       }
 
-      // 交易类型强制使用AI回复
-      if (typeFromAI && formInfo) {
-        formInfo.type = typeFromAI;
+      // 交易类型统一从AI回复获取，默认personal（与savedFormData分支保持一致）
+      if (formInfo) {
+        formInfo.type = typeFromAI || 'personal';
       }
     }
 
