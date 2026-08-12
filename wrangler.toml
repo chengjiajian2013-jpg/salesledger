@@ -17,6 +17,16 @@ ENV = "development"
 ACCESS_KEY = "0725"
 # 生产密码通过 wrangler.toml 配置
 
+# Secrets (通过 wrangler secret 命令设置，不要写在这里):
+# - DEEPSEEK_API_KEY: DeepSeek API密钥 (用于 parse.js)
+# - CLAUDE_API_KEY: Claude API密钥 (用于 ai.js)
+#
+# 设置方法:
+#   wrangler secret put DEEPSEEK_API_KEY --env test
+#   wrangler secret put CLAUDE_API_KEY --env test
+#   wrangler secret put DEEPSEEK_API_KEY (production)
+#   wrangler secret put CLAUDE_API_KEY (production)
+
 # 测试环境配置
 [env.test]
 name = "salesledger-test"

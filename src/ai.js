@@ -1,7 +1,6 @@
 // AI API 代理 - 通过后端调用避免 CORS 问题
 
 const API_BASE = 'https://apiclaude.cc/v1';
-const API_KEY = 'sk-f12f1e89a5f14d953a7433c7065567f999123bff2da924ebbeae1e9812896dd4';
 
 const SYSTEM_PROMPT = `你是一个专业的二奢（二手奢侈品）店销售助手，负责帮助计算成本、利润和价格。
 
@@ -139,13 +138,20 @@ export async function handleAIChat(request, env) {
     return jsonError('INVALID_REQUEST', 'messages 必须是非空数组', 400);
   }
 
+  // 从环境变量获取 API Key
+  const apiKey = env.CLAUDE_API_KEY;
+  if (!apiKey) {
+    console.error('[AI API Error] CLAUDE_API_KEY not configured');
+    return jsonError('CONFIG_ERROR', 'AI服务未配置', 500);
+  }
+
   try {
     // 调用 AI API
     const response = await fetch(`${API_BASE}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         model: 'claude-sonnet-5',
