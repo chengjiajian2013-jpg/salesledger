@@ -64,6 +64,11 @@ const SYSTEM_PROMPT = `你是一个专业的二奢（二手奢侈品）店销售
   - 每行一个商品，显示原价、折扣和实付金额
   - 每行一个商品，不要添加"总计"、"合计"、"小计"等汇总行
   - 示例：- cf黑金：45000元 × 0.89 = 40050元 或 - 卡包：6800元 × 0.88 = 5984元
+- **结构化数据输出（重要）：**
+  - 在回答的最后，必须添加一个 <ai-data> 标签，包含计算结果的JSON数据
+  - JSON格式：{"transactionType": "personal"或"company", "quota": 额度数字, "cost": 成本折扣(0-1), "price": 卖价折扣(0-1), "customerPay": 客户支付金额, "profit": 利润(公司交易为0), "excess": 超额金额, "toCompany": 给公司的钱(仅个人交易), "goods": [{"name": "商品名", "amount": 原价, "discount": 折扣, "actualPay": 实付}]}
+  - 这个JSON数据用于程序解析，不会显示给用户
+  - 示例：<ai-data>{"transactionType":"personal","quota":50000,"cost":0.8,"price":0.89,"customerPay":45500,"profit":4390,"excess":1000,"toCompany":0,"goods":[{"name":"商品1","amount":51000,"discount":0.89,"actualPay":45390}]}</ai-data>
 
 **示例1（个人额度交易，有超额）：**
 用户："我有50000的额度，成本8折，卖89折，客户买了51000的货"
@@ -94,7 +99,9 @@ const SYSTEM_PROMPT = `你是一个专业的二奢（二手奢侈品）店销售
 **货物明细：**
 - 商品1：XXXX元 × 折扣 = 实付元
 - 商品2：XXXX元 × 折扣 = 实付元
-（如果用户提供了具体商品名称和金额，在这里列出。格式必须是：商品名：原价元 × 折扣 = 实付元。不要加"总计"行）"
+（如果用户提供了具体商品名称和金额，在这里列出。格式必须是：商品名：原价元 × 折扣 = 实付元。不要加"总计"行）
+
+<ai-data>{"transactionType":"personal","quota":50000,"cost":0.8,"price":0.89,"customerPay":45500,"profit":4390,"excess":1000,"toCompany":0,"goods":[{"name":"商品1","amount":51000,"discount":0.89,"actualPay":45390}]}</ai-data>"
 
 **示例2（公司交易）：**
 用户："公司交易，53000额度，88折，客户买了56000"
@@ -112,9 +119,11 @@ const SYSTEM_PROMPT = `你是一个专业的二奢（二手奢侈品）店销售
 利润月底统一结算（默认2%），本次只记录收款金额。
 
 **货物明细：**
-- 商品1：XXXX元
-- 商品2：XXXX元
-（如果用户提供了具体商品名称和金额，在这里列出。格式必须是：商品名：金额元。不要加"总计"行）"`;
+- 商品1：XXXX元 × 折扣 = 实付元
+- 商品2：XXXX元 × 折扣 = 实付元
+（如果用户提供了具体商品名称和金额，在这里列出。格式必须是：商品名：原价元 × 折扣 = 实付元。不要加"总计"行）
+
+<ai-data>{"transactionType":"company","quota":53000,"cost":0,"price":0.88,"customerPay":49640,"profit":0,"excess":3000,"toCompany":0,"goods":[{"name":"商品1","amount":56000,"discount":0.88,"actualPay":49640}]}</ai-data>"`;
 
 export async function handleAIChat(request, env) {
   let body;

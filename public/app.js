@@ -1209,7 +1209,9 @@ async function renderMessages() {
   el.aiMessages.innerHTML = chat.messages.map((msg, idx) => {
     const className = msg.role === 'user' ? 'ai-message--user' : 'ai-message--assistant';
     const copyBtn = msg.role === 'assistant' ? `<button class="ai-message__copy" data-idx="${idx}" title="复制">📋</button>` : '';
-    return `<div class="ai-message ${className}">${escapeHtml(msg.content).replace(/\n/g, '<br>')}${copyBtn}</div>`;
+    // 如果是AI回复，移除<ai-data>标签后再显示
+    const displayContent = msg.role === 'assistant' ? removeAIDataTag(msg.content) : msg.content;
+    return `<div class="ai-message ${className}">${escapeHtml(displayContent).replace(/\n/g, '<br>')}${copyBtn}</div>`;
   }).join('');
 
   // 绑定复制按钮事件
@@ -1218,7 +1220,9 @@ async function renderMessages() {
       e.stopPropagation();
       const idx = parseInt(btn.dataset.idx);
       if (chat.messages[idx]) {
-        navigator.clipboard.writeText(chat.messages[idx].content).then(() => {
+        // 复制时移除<ai-data>标签
+        const contentToCopy = removeAIDataTag(chat.messages[idx].content);
+        navigator.clipboard.writeText(contentToCopy).then(() => {
           showToast('已复制到剪贴板', 'info');
         }).catch(() => {
           showToast('复制失败', 'error');
@@ -2110,8 +2114,41 @@ if (aiRecordBtn) {
   });
 }
 
+// 从AI回复中提取结构化JSON数据
+function extractAIData(content) {
+  // 匹配 <ai-data>...</ai-data> 标签
+  const match = content.match(/<ai-data>(.*?)<\/ai-data>/s);
+  if (match) {
+    try {
+      return JSON.parse(match[1].trim());
+    } catch (e) {
+      console.error('解析AI数据JSON失败:', e);
+      return null;
+    }
+  }
+  return null;
+}
+
+// 从AI回复中移除<ai-data>标签（用于显示）
+function removeAIDataTag(content) {
+  return content.replace(/<ai-data>.*?<\/ai-data>/s, '').trim();
+}
+
 // 解析AI回复中的数值
 function parseAIResponse(content) {
+  // 优先尝试从<ai-data>标签提取JSON数据
+  const aiData = extractAIData(content);
+  if (aiData) {
+    return {
+      customerPay: aiData.customerPay || 0,
+      toCompany: aiData.toCompany || 0,
+      profit: aiData.profit || 0,
+      excess: aiData.excess || 0,
+      quota: aiData.quota || 0
+    };
+  }
+
+  // 兜底：使用正则解析（兼容旧版AI回复）
   const result = {
     customerPay: 0,    // 客户支付
     toCompany: 0,      // 给公司的钱
@@ -2160,6 +2197,13 @@ function parseAIResponse(content) {
 
 // 从AI回复中提取交易类型
 function parseTransactionTypeFromAI(aiResponse) {
+  // 优先尝试从<ai-data>标签提取JSON数据
+  const aiData = extractAIData(aiResponse);
+  if (aiData && aiData.transactionType) {
+    return aiData.transactionType; // 'personal' 或 'company'
+  }
+
+  // 兜底：使用正则解析（兼容旧版AI回复）
   // 匹配 "**交易类型：**个人交易" 或 "**交易类型：**公司交易"
   const typeMatch = aiResponse.match(/\*\*交易类型[：:]\*\*\s*(个人交易|公司交易)/);
   if (typeMatch) {
@@ -2178,6 +2222,16 @@ function parseTransactionTypeFromAI(aiResponse) {
 
 // 从AI回复中解析货物列表
 function parseGoodsFromAIResponse(aiResponse) {
+  // 优先尝试从<ai-data>标签提取JSON数据
+  const aiData = extractAIData(aiResponse);
+  if (aiData && aiData.goods && aiData.goods.length > 0) {
+    return aiData.goods.map(item => ({
+      name: item.name,
+      amount: item.amount
+    }));
+  }
+
+  // 兜底：使用正则解析（兼容旧版AI回复）
   const goods = [];
 
   // 匹配 "**货物明细：**" 部分
