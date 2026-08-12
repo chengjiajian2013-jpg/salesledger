@@ -302,6 +302,7 @@ function switchView(view) {
     el.transactionsView.style.display = 'block';
     el.monthlyView.style.display = 'none';
     el.aiView.style.display = 'none';
+    el.fab.style.display = 'flex';  // 显示FAB按钮
     refreshAll();
   } else if (view === 'monthly') {
     // 月度统计：隐藏 seller-tabs，只显示月均+年总数
@@ -310,6 +311,7 @@ function switchView(view) {
     el.transactionsView.style.display = 'none';
     el.monthlyView.style.display = 'block';
     el.aiView.style.display = 'none';
+    el.fab.style.display = 'flex';  // 显示FAB按钮
     loadMonthlyStats();
   } else if (view === 'ai') {
     // AI助手：隐藏 seller-tabs、统计和FAB按钮
@@ -318,11 +320,8 @@ function switchView(view) {
     el.transactionsView.style.display = 'none';
     el.monthlyView.style.display = 'none';
     el.aiView.style.display = 'block';
-    el.fab.style.display = 'none';
+    el.fab.style.display = 'none';  // 隐藏FAB按钮
     loadAIView();
-  } else {
-    // 其他视图恢复FAB按钮
-    el.fab.style.display = 'flex';
   }
 }
 
