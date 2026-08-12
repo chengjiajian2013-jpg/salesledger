@@ -2210,7 +2210,15 @@ function parseTransactionTypeFromAI(aiResponse) {
     return typeMatch[1] === '个人交易' ? 'personal' : 'company';
   }
 
-  // 兜底：匹配开头的 "好的，让我帮你算一下这笔个人交易" 或 "好的，这是公司交易"
+  // 兜底2：匹配开头的明确表述（更严格的正则，避免否定句误判）
+  // 匹配："这是X交易"、"这笔X交易"、"帮你算X交易"等肯定句式
+  const positiveMatch = aiResponse.match(/(?:这是|这笔|帮你算(?:一下)?(?:这笔)?)\s*(个人|公司)交易/);
+  if (positiveMatch) {
+    return positiveMatch[1] === '个人' ? 'personal' : 'company';
+  }
+
+  // 最后兜底：简单关键词匹配（此时已排除了大部分否定句场景）
+  // 注意：这个逻辑最宽松，可能被否定句误导，但前面的正则已覆盖了正常情况
   if (aiResponse.includes('个人交易')) {
     return 'personal';
   } else if (aiResponse.includes('公司交易')) {
