@@ -2356,6 +2356,16 @@ function parseGoodsFromQuestion(question) {
 
 // 打开交易录入模态框
 function openTransactionModal(result, formInfo, goodsList) {
+  // 空值保护：确保formInfo存在
+  if (!formInfo) {
+    formInfo = {
+      type: 'personal',
+      quota: 0,
+      price: 0,
+      cost: 0
+    };
+  }
+
   // 切换到交易明细视图
   switchView('transactions');
 
