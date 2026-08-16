@@ -325,6 +325,66 @@ function switchView(view) {
   }
 }
 
+// ═══ APP SWITCHER ═══
+let currentApp = 'joeyzou';
+
+const APP_CONFIG = {
+  joeyzou: {
+    name: 'Joeyzou记账本',
+    icon: '📊',
+    showViewTabs: true,
+    showSellerTabs: true,
+    showMonthlyTotal: true
+  },
+  fenghua: {
+    name: '风华记账',
+    icon: '🌸',
+    showViewTabs: false,
+    showSellerTabs: false,
+    showMonthlyTotal: false
+  },
+  todo: {
+    name: '待办事项',
+    icon: '✅',
+    showViewTabs: false,
+    showSellerTabs: false,
+    showMonthlyTotal: false
+  }
+};
+
+function switchApp(appName) {
+  currentApp = appName;
+  const config = APP_CONFIG[appName];
+
+  // 更新页面显示
+  document.querySelectorAll('.page').forEach(page => {
+    page.classList.remove('page--active');
+  });
+
+  const targetPage = document.getElementById(`page${appName.charAt(0).toUpperCase() + appName.slice(1)}`);
+  if (targetPage) {
+    targetPage.classList.add('page--active');
+  }
+
+  // 更新header显示
+  el.viewTabs.style.display = config.showViewTabs ? 'flex' : 'none';
+  el.sellerTabs.style.display = config.showSellerTabs ? 'flex' : 'none';
+  el.headerMonthlyTotal.style.display = config.showMonthlyTotal ? 'flex' : 'none';
+
+  // 更新switcher显示
+  document.getElementById('currentAppIcon').textContent = config.icon;
+  document.getElementById('currentAppName').textContent = config.name;
+
+  // 更新dropdown选中状态
+  document.querySelectorAll('.app-switcher__item').forEach(item => {
+    item.classList.toggle('app-switcher--active', item.dataset.app === appName);
+    item.classList.toggle('app-switcher__item--active', item.dataset.app === appName);
+  });
+
+  // 关闭dropdown
+  document.getElementById('appSwitcher').classList.remove('app-switcher--open');
+}
+
 // ═══ 月份导航 ═══
 function getMonthFromFilter() {
   return el.filterMonth.value || getCurrentMonth();
@@ -883,6 +943,35 @@ function bindEvents() {
   el.viewTabs.addEventListener('click', (e) => {
     const btn = e.target.closest('.view-tab');
     if (btn) switchView(btn.dataset.view);
+  });
+
+  // App切换器
+  const appSwitcher = document.getElementById('appSwitcher');
+  const appSwitcherCurrent = document.getElementById('appSwitcherCurrent');
+
+  if (appSwitcherCurrent) {
+    appSwitcherCurrent.addEventListener('click', (e) => {
+      e.stopPropagation();
+      appSwitcher.classList.toggle('app-switcher--open');
+    });
+  }
+
+  document.querySelectorAll('.app-switcher__item').forEach(item => {
+    item.addEventListener('click', () => {
+      const appName = item.dataset.app;
+      if (appName && appName !== currentApp) {
+        switchApp(appName);
+      } else {
+        appSwitcher.classList.remove('app-switcher--open');
+      }
+    });
+  });
+
+  // 点击外部关闭dropdown
+  document.addEventListener('click', (e) => {
+    if (!appSwitcher.contains(e.target)) {
+      appSwitcher.classList.remove('app-switcher--open');
+    }
   });
 
   // 月份导航
