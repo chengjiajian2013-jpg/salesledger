@@ -2867,7 +2867,154 @@ switchApp = function(appName) {
   originalSwitchApp(appName);
   if (appName === 'fenghua') {
     initFenghua();
+  } else if (appName === 'todo') {
+    initTodo();
   }
 };
+
+// ════════════════════════════════════════════════════════════════
+// ═══ 待办事项模块 ═══
+// ════════════════════════════════════════════════════════════════
+
+let todoList = [];
+let todoFilter = 'all';
+
+function initTodo() {
+  loadTodos();
+  renderTodos();
+
+  // 添加待办
+  const addBtn = document.getElementById('todoAddBtn');
+  const input = document.getElementById('todoInput');
+
+  if (addBtn) {
+    addBtn.addEventListener('click', addTodo);
+  }
+
+  if (input) {
+    input.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') addTodo();
+    });
+  }
+
+  // 筛选
+  document.querySelectorAll('.todo-filter').forEach(filter => {
+    filter.addEventListener('click', () => {
+      document.querySelectorAll('.todo-filter').forEach(f => f.classList.remove('todo-filter--active'));
+      filter.classList.add('todo-filter--active');
+      todoFilter = filter.dataset.filter;
+      renderTodos();
+    });
+  });
+}
+
+function loadTodos() {
+  todoList = JSON.parse(localStorage.getItem('todo_list') || '[]');
+}
+
+function saveTodos() {
+  localStorage.setItem('todo_list', JSON.stringify(todoList));
+}
+
+function addTodo() {
+  const input = document.getElementById('todoInput');
+  if (!input) return;
+
+  const text = input.value.trim();
+  if (!text) {
+    showToast('请输入待办内容', 'error');
+    return;
+  }
+
+  const todo = {
+    id: Date.now().toString(),
+    text: text,
+    completed: false,
+    createdAt: new Date().toISOString()
+  };
+
+  todoList.unshift(todo);
+  saveTodos();
+
+  input.value = '';
+  renderTodos();
+  showToast('待办已添加', 'success');
+}
+
+function toggleTodo(id) {
+  const todo = todoList.find(t => t.id === id);
+  if (todo) {
+    todo.completed = !todo.completed;
+    saveTodos();
+    renderTodos();
+  }
+}
+
+function deleteTodo(id) {
+  todoList = todoList.filter(t => t.id !== id);
+  saveTodos();
+  renderTodos();
+  showToast('待办已删除', 'info');
+}
+
+function renderTodos() {
+  const container = document.getElementById('todoList');
+  if (!container) return;
+
+  // 筛选
+  let displayList = todoList;
+  if (todoFilter === 'pending') {
+    displayList = todoList.filter(t => !t.completed);
+  } else if (todoFilter === 'completed') {
+    displayList = todoList.filter(t => t.completed);
+  }
+
+  // 更新统计
+  const pending = todoList.filter(t => !t.completed).length;
+  const completed = todoList.filter(t => t.completed).length;
+  const total = todoList.length;
+
+  const pendingEl = document.getElementById('todoPending');
+  const completedEl = document.getElementById('todoCompleted');
+  const totalEl = document.getElementById('todoTotal');
+
+  if (pendingEl) pendingEl.textContent = pending;
+  if (completedEl) completedEl.textContent = completed;
+  if (totalEl) totalEl.textContent = total;
+
+  // 空状态
+  if (displayList.length === 0) {
+    container.innerHTML = `
+      <div class="todo-empty">
+        <div class="todo-empty__icon">${todoFilter === 'completed' ? '🎉' : '📝'}</div>
+        <div class="todo-empty__text">${todoFilter === 'completed' ? '还没有已完成的待办' : '还没有待办事项，添加一个吧！'}</div>
+      </div>
+    `;
+    return;
+  }
+
+  // 渲染列表
+  let html = '';
+  displayList.forEach(todo => {
+    const checkedClass = todo.completed ? 'todo-item__checkbox--checked' : '';
+    const completedClass = todo.completed ? 'todo-item--completed' : '';
+    const time = new Date(todo.createdAt).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+    html += `
+      <div class="todo-item ${completedClass}" data-id="${todo.id}">
+        <div class="todo-item__checkbox ${checkedClass}" onclick="toggleTodo('${todo.id}')">
+          ${todo.completed ? '✓' : ''}
+        </div>
+        <div class="todo-item__content">
+          <div class="todo-item__text">${escapeHtml(todo.text)}</div>
+          <div class="todo-item__time">${time}</div>
+        </div>
+        <button class="todo-item__delete" onclick="deleteTodo('${todo.id}')" title="删除">🗑️</button>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+}
 
 } // end of initApp()

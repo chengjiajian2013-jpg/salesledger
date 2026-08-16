@@ -2,6 +2,11 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "local",
+      "url": "http://localhost:8787",
+      "autoPort": true
+    },
+    {
       "name": "test",
       "url": "https://salesledger-test.chengjiajian2013.workers.dev"
     }
