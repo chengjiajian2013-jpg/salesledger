@@ -2631,29 +2631,42 @@ function loadFenghuaTransactions() {
   const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
   const endDate = `${year}-${month}-${lastDay}`;
 
-  const allData = JSON.parse(localStorage.getItem('fenghua_transactions') || '[]');
-  const monthData = allData.filter(t => t.date >= startDate && t.date <= endDate);
+  // 从后端API获取数据
+  const params = new URLSearchParams({ startDate, endDate });
+  if (fenghuaSelectedCategory !== 'all') {
+    params.set('category', fenghuaSelectedCategory);
+  }
 
-  let income = 0;
-  let expense = 0;
-  monthData.forEach(t => {
-    if (t.type === 'income') {
-      income += t.amount;
-    } else {
-      expense += t.amount;
-    }
-  });
+  fetch(`/api/v1/fenghua/transactions?${params.toString()}`)
+    .then(res => res.json())
+    .then(result => {
+      const monthData = result.data || [];
 
-  const incomeEl = document.getElementById('fenghuaIncome');
-  const expenseEl = document.getElementById('fenghuaExpense');
-  const balanceEl = document.getElementById('fenghuaBalance');
+      let income = 0;
+      let expense = 0;
+      monthData.forEach(t => {
+        if (t.type === 'income') {
+          income += t.amount;
+        } else {
+          expense += t.amount;
+        }
+      });
 
-  if (incomeEl) incomeEl.textContent = '¥' + income.toFixed(2);
-  if (expenseEl) expenseEl.textContent = '¥' + expense.toFixed(2);
-  if (balanceEl) balanceEl.textContent = '¥' + (income - expense).toFixed(2);
+      const incomeEl = document.getElementById('fenghuaIncome');
+      const expenseEl = document.getElementById('fenghuaExpense');
+      const balanceEl = document.getElementById('fenghuaBalance');
 
-  fenghuaTransactions = monthData;
-  renderFenghuaList();
+      if (incomeEl) incomeEl.textContent = '¥' + income.toFixed(2);
+      if (expenseEl) expenseEl.textContent = '¥' + expense.toFixed(2);
+      if (balanceEl) balanceEl.textContent = '¥' + (income - expense).toFixed(2);
+
+      fenghuaTransactions = monthData;
+      renderFenghuaList();
+    })
+    .catch(err => {
+      console.error('加载交易失败:', err);
+      showToast('加载数据失败', 'error');
+    });
 }
 
 function renderFenghuaList() {
@@ -2839,22 +2852,32 @@ function openFenghuaModal() {
       return;
     }
 
-    const allData = JSON.parse(localStorage.getItem('fenghua_transactions') || '[]');
-    const newTransaction = {
-      id: Date.now().toString(),
-      type: selectedType,
-      amount: amount,
-      category: selectedCategory,
-      title: title,
-      date: date,
-      createdAt: new Date().toISOString()
-    };
-    allData.push(newTransaction);
-    localStorage.setItem('fenghua_transactions', JSON.stringify(allData));
-
-    modal.remove();
-    loadFenghuaTransactions();
-    showToast('记录已保存', 'success');
+    // 发送到后端API
+    fetch('/api/v1/fenghua/transactions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: selectedType,
+        amount: amount,
+        category: selectedCategory,
+        title: title,
+        date: date
+      })
+    })
+    .then(res => res.json())
+    .then(result => {
+      if (result.error) {
+        showToast(result.error.message, 'error');
+        return;
+      }
+      modal.remove();
+      loadFenghuaTransactions();
+      showToast('记录已保存', 'success');
+    })
+    .catch(err => {
+      console.error('保存失败:', err);
+      showToast('保存失败', 'error');
+    });
   });
 
   modal.addEventListener('click', (e) => {
@@ -2909,11 +2932,34 @@ function initTodo() {
 }
 
 function loadTodos() {
-  todoList = JSON.parse(localStorage.getItem('todo_list') || '[]');
+  // 从后端API获取数据
+  fetch(`/api/v1/todos?filter=${todoFilter}`)
+    .then(res => res.json())
+    .then(result => {
+      todoList = result.data || [];
+      renderTodos();
+      updateTodoStats();
+    })
+    .catch(err => {
+      console.error('加载待办失败:', err);
+      showToast('加载数据失败', 'error');
+    });
 }
 
-function saveTodos() {
-  localStorage.setItem('todo_list', JSON.stringify(todoList));
+function updateTodoStats() {
+  fetch('/api/v1/todos/stats')
+    .then(res => res.json())
+    .then(result => {
+      const stats = result.data || { total: 0, pending: 0, completed: 0 };
+      const pendingEl = document.getElementById('todoPending');
+      const completedEl = document.getElementById('todoCompleted');
+      const totalEl = document.getElementById('todoTotal');
+
+      if (pendingEl) pendingEl.textContent = stats.pending;
+      if (completedEl) completedEl.textContent = stats.completed;
+      if (totalEl) totalEl.textContent = stats.total;
+    })
+    .catch(err => console.error('加载统计失败:', err));
 }
 
 function addTodo() {
@@ -2926,35 +2972,70 @@ function addTodo() {
     return;
   }
 
-  const todo = {
-    id: Date.now().toString(),
-    text: text,
-    completed: false,
-    createdAt: new Date().toISOString()
-  };
-
-  todoList.unshift(todo);
-  saveTodos();
-
-  input.value = '';
-  renderTodos();
-  showToast('待办已添加', 'success');
+  // 发送到后端API
+  fetch('/api/v1/todos', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text: text })
+  })
+  .then(res => res.json())
+  .then(result => {
+    if (result.error) {
+      showToast(result.error.message, 'error');
+      return;
+    }
+    input.value = '';
+    loadTodos();
+    showToast('待办已添加', 'success');
+  })
+  .catch(err => {
+    console.error('添加失败:', err);
+    showToast('添加失败', 'error');
+  });
 }
 
 function toggleTodo(id) {
   const todo = todoList.find(t => t.id === id);
-  if (todo) {
-    todo.completed = !todo.completed;
-    saveTodos();
-    renderTodos();
-  }
+  if (!todo) return;
+
+  // 发送到后端API
+  fetch(`/api/v1/todos/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ completed: !todo.completed })
+  })
+  .then(res => res.json())
+  .then(result => {
+    if (result.error) {
+      showToast(result.error.message, 'error');
+      return;
+    }
+    loadTodos();
+  })
+  .catch(err => {
+    console.error('更新失败:', err);
+    showToast('更新失败', 'error');
+  });
 }
 
 function deleteTodo(id) {
-  todoList = todoList.filter(t => t.id !== id);
-  saveTodos();
-  renderTodos();
-  showToast('待办已删除', 'info');
+  // 发送到后端API
+  fetch(`/api/v1/todos/${id}`, {
+    method: 'DELETE'
+  })
+  .then(res => res.json())
+  .then(result => {
+    if (result.error) {
+      showToast(result.error.message, 'error');
+      return;
+    }
+    loadTodos();
+    showToast('待办已删除', 'info');
+  })
+  .catch(err => {
+    console.error('删除失败:', err);
+    showToast('删除失败', 'error');
+  });
 }
 
 function renderTodos() {
@@ -2968,19 +3049,6 @@ function renderTodos() {
   } else if (todoFilter === 'completed') {
     displayList = todoList.filter(t => t.completed);
   }
-
-  // 更新统计
-  const pending = todoList.filter(t => !t.completed).length;
-  const completed = todoList.filter(t => t.completed).length;
-  const total = todoList.length;
-
-  const pendingEl = document.getElementById('todoPending');
-  const completedEl = document.getElementById('todoCompleted');
-  const totalEl = document.getElementById('todoTotal');
-
-  if (pendingEl) pendingEl.textContent = pending;
-  if (completedEl) completedEl.textContent = completed;
-  if (totalEl) totalEl.textContent = total;
 
   // 空状态
   if (displayList.length === 0) {

@@ -16,6 +16,20 @@ import {
   handleSaveFormData,
   handleGetFormData,
 } from './aiChats.js';
+import {
+  handleGetFenghuaTransactions,
+  handleCreateFenghuaTransaction,
+  handleUpdateFenghuaTransaction,
+  handleDeleteFenghuaTransaction,
+  handleGetFenghuaSummary,
+} from './fenghua.js';
+import {
+  handleGetTodos,
+  handleCreateTodo,
+  handleUpdateTodo,
+  handleDeleteTodo,
+  handleGetTodoStats,
+} from './todos.js';
 import { SCHEMA_STATEMENTS } from './schema.js';
 
 // 单例：确保只初始化一次
@@ -128,6 +142,30 @@ export default {
           } else if (path.match(/^\/api\/v1\/ai\/chats\/[^\/]+\/form-data$/) && method === 'GET') {
             const chatId = path.split('/')[5];
             response = await handleGetFormData(request, env, chatId);
+          } else if (path === '/api/v1/fenghua/transactions' && method === 'GET') {
+            response = await handleGetFenghuaTransactions(request, env);
+          } else if (path === '/api/v1/fenghua/transactions' && method === 'POST') {
+            response = await handleCreateFenghuaTransaction(request, env);
+          } else if (path.match(/^\/api\/v1\/fenghua\/transactions\/[^\/]+$/) && method === 'PATCH') {
+            const id = path.split('/').pop();
+            response = await handleUpdateFenghuaTransaction(request, env, id);
+          } else if (path.match(/^\/api\/v1\/fenghua\/transactions\/[^\/]+$/) && method === 'DELETE') {
+            const id = path.split('/').pop();
+            response = await handleDeleteFenghuaTransaction(request, env, id);
+          } else if (path === '/api/v1/fenghua/summary' && method === 'GET') {
+            response = await handleGetFenghuaSummary(request, env);
+          } else if (path === '/api/v1/todos' && method === 'GET') {
+            response = await handleGetTodos(request, env);
+          } else if (path === '/api/v1/todos' && method === 'POST') {
+            response = await handleCreateTodo(request, env);
+          } else if (path.match(/^\/api\/v1\/todos\/[^\/]+$/) && method === 'PATCH') {
+            const id = path.split('/').pop();
+            response = await handleUpdateTodo(request, env, id);
+          } else if (path.match(/^\/api\/v1\/todos\/[^\/]+$/) && method === 'DELETE') {
+            const id = path.split('/').pop();
+            response = await handleDeleteTodo(request, env, id);
+          } else if (path === '/api/v1/todos/stats' && method === 'GET') {
+            response = await handleGetTodoStats(request, env);
           } else {
             response = jsonError('RESOURCE_NOT_FOUND', '接口不存在: ' + path, 404);
           }
