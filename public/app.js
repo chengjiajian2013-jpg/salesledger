@@ -2537,4 +2537,337 @@ function openTransactionModal(result, formInfo, goodsList) {
   showToast('已自动填充交易数据，请确认后保存', 'info');
 }
 
+// ════════════════════════════════════════════════════════════════
+// ═══ 风华记账模块 ═══
+// ════════════════════════════════════════════════════════════════
+
+// 分类配置
+const FENGHUA_CATEGORIES = {
+  food: { name: '餐饮', icon: '🍜' },
+  transport: { name: '交通', icon: '🚗' },
+  shopping: { name: '购物', icon: '🛍️' },
+  entertainment: { name: '娱乐', icon: '🎮' },
+  housing: { name: '居住', icon: '🏠' },
+  medical: { name: '医疗', icon: '💊' },
+  income: { name: '收入', icon: '💰' },
+  other: { name: '其他', icon: '📦' }
+};
+
+// 当前选中的月份和分类
+let fenghuaCurrentMonth = '';
+let fenghuaSelectedCategory = 'all';
+let fenghuaTransactions = [];
+
+// 初始化风华记账
+function initFenghua() {
+  const now = new Date();
+  fenghuaCurrentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  updateFenghuaMonthDisplay();
+  loadFenghuaTransactions();
+
+  // 绑定事件
+  const fab = document.getElementById('fenghuaFab');
+  if (fab) fab.addEventListener('click', openFenghuaModal);
+
+  const monthSelector = document.getElementById('fenghuaMonthSelector');
+  if (monthSelector) monthSelector.addEventListener('click', toggleFenghuaMonthPicker);
+
+  // 分类选择
+  document.querySelectorAll('.fenghua-category').forEach(cat => {
+    cat.addEventListener('click', () => {
+      document.querySelectorAll('.fenghua-category').forEach(c => c.classList.remove('fenghua-category--active'));
+      cat.classList.add('fenghua-category--active');
+      fenghuaSelectedCategory = cat.dataset.category;
+      renderFenghuaList();
+    });
+  });
+}
+
+function updateFenghuaMonthDisplay() {
+  const [year, month] = fenghuaCurrentMonth.split('-');
+  const el = document.getElementById('fenghuaCurrentMonth');
+  if (el) el.textContent = `${year}年${parseInt(month)}月`;
+}
+
+function toggleFenghuaMonthPicker() {
+  const [year, month] = fenghuaCurrentMonth.split('-').map(Number);
+  const current = new Date(year, month - 1);
+  const prev = new Date(current);
+  prev.setMonth(prev.getMonth() - 1);
+  const next = new Date(current);
+  next.setMonth(next.getMonth() + 1);
+
+  const options = [
+    { label: formatFenghuaMonth(prev), value: formatFenghuaMonthString(prev) },
+    { label: formatFenghuaMonth(next), value: formatFenghuaMonthString(next) }
+  ];
+
+  const selected = prompt(
+    '选择月份：\n1. ' + options[0].label + '\n2. ' + options[1].label,
+    '1'
+  );
+
+  if (selected === '1') {
+    fenghuaCurrentMonth = options[0].value;
+  } else if (selected === '2') {
+    fenghuaCurrentMonth = options[1].value;
+  }
+
+  updateFenghuaMonthDisplay();
+  loadFenghuaTransactions();
+}
+
+function formatFenghuaMonth(date) {
+  return `${date.getFullYear()}年${date.getMonth() + 1}月`;
+}
+
+function formatFenghuaMonthString(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function loadFenghuaTransactions() {
+  const [year, month] = fenghuaCurrentMonth.split('-');
+  const startDate = `${year}-${month}-01`;
+  const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
+  const endDate = `${year}-${month}-${lastDay}`;
+
+  const allData = JSON.parse(localStorage.getItem('fenghua_transactions') || '[]');
+  const monthData = allData.filter(t => t.date >= startDate && t.date <= endDate);
+
+  let income = 0;
+  let expense = 0;
+  monthData.forEach(t => {
+    if (t.type === 'income') {
+      income += t.amount;
+    } else {
+      expense += t.amount;
+    }
+  });
+
+  const incomeEl = document.getElementById('fenghuaIncome');
+  const expenseEl = document.getElementById('fenghuaExpense');
+  const balanceEl = document.getElementById('fenghuaBalance');
+
+  if (incomeEl) incomeEl.textContent = '¥' + income.toFixed(2);
+  if (expenseEl) expenseEl.textContent = '¥' + expense.toFixed(2);
+  if (balanceEl) balanceEl.textContent = '¥' + (income - expense).toFixed(2);
+
+  fenghuaTransactions = monthData;
+  renderFenghuaList();
+}
+
+function renderFenghuaList() {
+  const listContainer = document.getElementById('fenghuaList');
+  if (!listContainer) return;
+
+  let displayData = fenghuaTransactions;
+  if (fenghuaSelectedCategory !== 'all') {
+    displayData = fenghuaTransactions.filter(t => t.category === fenghuaSelectedCategory);
+  }
+
+  if (displayData.length === 0) {
+    listContainer.innerHTML = `
+      <div style="text-align: center; padding: 40px; color: var(--text-3);">
+        <div style="font-size: 3rem; margin-bottom: 16px;">📝</div>
+        <div style="font-size: 0.9rem;">还没有记录，点击右下角 + 添加第一笔</div>
+      </div>
+    `;
+    return;
+  }
+
+  const grouped = {};
+  displayData.forEach(t => {
+    if (!grouped[t.date]) {
+      grouped[t.date] = [];
+    }
+    grouped[t.date].push(t);
+  });
+
+  const sortedDates = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
+
+  let html = '';
+  sortedDates.forEach(date => {
+    const items = grouped[date];
+    let dayIncome = 0;
+    let dayExpense = 0;
+    items.forEach(t => {
+      if (t.type === 'income') dayIncome += t.amount;
+      else dayExpense += t.amount;
+    });
+
+    const [y, m, d] = date.split('-');
+    const dateStr = `${parseInt(m)}月${parseInt(d)}日`;
+
+    html += `
+      <div class="fenghua-date-group">
+        <div class="fenghua-date-group__header">
+          <span class="fenghua-date-group__date">${dateStr}</span>
+          <span class="fenghua-date-group__total">
+            ${dayIncome > 0 ? `<span style="color:var(--success)">+¥${dayIncome.toFixed(2)}</span>` : ''}
+            ${dayIncome > 0 && dayExpense > 0 ? ' / ' : ''}
+            ${dayExpense > 0 ? `<span style="color:var(--danger)">-¥${dayExpense.toFixed(2)}</span>` : ''}
+          </span>
+        </div>
+    `;
+
+    items.forEach(t => {
+      const cat = FENGHUA_CATEGORIES[t.category] || FENGHUA_CATEGORIES.other;
+      const amountClass = t.type === 'income' ? 'fenghua-transaction__amount--income' : 'fenghua-transaction__amount--expense';
+      const sign = t.type === 'income' ? '+' : '-';
+
+      html += `
+        <div class="fenghua-transaction" data-id="${t.id}">
+          <div class="fenghua-transaction__icon">${cat.icon}</div>
+          <div class="fenghua-transaction__info">
+            <div class="fenghua-transaction__title">${t.title}</div>
+            <div class="fenghua-transaction__category">${cat.name}</div>
+          </div>
+          <div class="fenghua-transaction__amount ${amountClass}">${sign}¥${t.amount.toFixed(2)}</div>
+        </div>
+      `;
+    });
+
+    html += '</div>';
+  });
+
+  listContainer.innerHTML = html;
+}
+
+function openFenghuaModal() {
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay modal-overlay--open';
+  modal.id = 'fenghuaModal';
+  modal.innerHTML = `
+    <div class="modal" style="max-height: 90vh; overflow-y: auto;">
+      <div class="modal__title">添加记录</div>
+      <form id="fenghuaForm">
+        <div class="form-field">
+          <label class="form-field__label">类型</label>
+          <div style="display: flex; gap: 8px;">
+            <button type="button" class="fenghua-type-btn fenghua-type-btn--active" data-type="expense" style="flex:1; padding: 12px; border: 2px solid var(--danger); background: var(--danger-soft); color: var(--danger); border-radius: 12px; font-weight: 600; cursor: pointer;">支出</button>
+            <button type="button" class="fenghua-type-btn" data-type="income" style="flex:1; padding: 12px; border: 2px solid var(--border); background: var(--surface); color: var(--text); border-radius: 12px; font-weight: 600; cursor: pointer;">收入</button>
+          </div>
+        </div>
+        <div class="form-field">
+          <label class="form-field__label">金额</label>
+          <input type="number" class="form-field__input" id="fenghuaAmount" placeholder="0.00" step="0.01" required>
+        </div>
+        <div class="form-field">
+          <label class="form-field__label">分类</label>
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;" id="fenghuaModalCategories"></div>
+        </div>
+        <div class="form-field">
+          <label class="form-field__label">备注</label>
+          <input type="text" class="form-field__input" id="fenghuaTitle" placeholder="例如：午餐、工资..." required>
+        </div>
+        <div class="form-field">
+          <label class="form-field__label">日期</label>
+          <input type="date" class="form-field__input" id="fenghuaDate" required>
+        </div>
+        <div style="display: flex; gap: 12px; margin-top: 20px;">
+          <button type="button" class="submit-btn" style="flex: 1; background: var(--surface-3);" onclick="document.getElementById('fenghuaModal').remove()">取消</button>
+          <button type="submit" class="submit-btn" style="flex: 1;">保存</button>
+        </div>
+      </form>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  let selectedType = 'expense';
+  let selectedCategory = 'food';
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('fenghuaDate').value = today;
+
+  modal.querySelectorAll('.fenghua-type-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      modal.querySelectorAll('.fenghua-type-btn').forEach(b => {
+        b.classList.remove('fenghua-type-btn--active');
+        b.style.borderColor = 'var(--border)';
+        b.style.background = 'var(--surface)';
+        b.style.color = 'var(--text)';
+      });
+      btn.classList.add('fenghua-type-btn--active');
+      selectedType = btn.dataset.type;
+      renderFenghuaModalCategories(selectedType === 'income' ? 'income' : 'food');
+    });
+  });
+
+  function renderFenghuaModalCategories(active) {
+    const container = document.getElementById('fenghuaModalCategories');
+    const cats = selectedType === 'income' ? { income: FENGHUA_CATEGORIES.income, salary: { name: '工资', icon: '💼' }, investment: { name: '投资', icon: '📈' } } : FENGHUA_CATEGORIES;
+    let html = '';
+    Object.entries(cats).forEach(([key, val]) => {
+      const isActive = key === active ? 'border-color: var(--gold); background: var(--gold-soft);' : '';
+      html += `<div class="fenghua-modal-cat" data-cat="${key}" style="padding: 12px; border: 2px solid var(--border); border-radius: 12px; text-align: center; cursor: pointer; transition: all 0.2s; ${isActive}">
+        <div style="font-size: 1.5rem;">${val.icon}</div>
+        <div style="font-size: 0.72rem; font-weight: 600; margin-top: 4px;">${val.name}</div>
+      </div>`;
+    });
+    container.innerHTML = html;
+
+    selectedCategory = active;
+
+    container.querySelectorAll('.fenghua-modal-cat').forEach(cat => {
+      cat.addEventListener('click', () => {
+        container.querySelectorAll('.fenghua-modal-cat').forEach(c => {
+          c.style.borderColor = 'var(--border)';
+          c.style.background = 'transparent';
+        });
+        cat.style.borderColor = 'var(--gold)';
+        cat.style.background = 'var(--gold-soft)';
+        selectedCategory = cat.dataset.cat;
+      });
+    });
+  }
+
+  renderFenghuaModalCategories('food');
+
+  modal.querySelector('#fenghuaForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const amount = parseFloat(document.getElementById('fenghuaAmount').value);
+    const title = document.getElementById('fenghuaTitle').value;
+    const date = document.getElementById('fenghuaDate').value;
+
+    if (!amount || amount <= 0) {
+      showToast('请输入有效金额', 'error');
+      return;
+    }
+
+    if (!title.trim()) {
+      showToast('请输入备注', 'error');
+      return;
+    }
+
+    const allData = JSON.parse(localStorage.getItem('fenghua_transactions') || '[]');
+    const newTransaction = {
+      id: Date.now().toString(),
+      type: selectedType,
+      amount: amount,
+      category: selectedCategory,
+      title: title,
+      date: date,
+      createdAt: new Date().toISOString()
+    };
+    allData.push(newTransaction);
+    localStorage.setItem('fenghua_transactions', JSON.stringify(allData));
+
+    modal.remove();
+    loadFenghuaTransactions();
+    showToast('记录已保存', 'success');
+  });
+
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.remove();
+  });
+}
+
+const originalSwitchApp = switchApp;
+switchApp = function(appName) {
+  originalSwitchApp(appName);
+  if (appName === 'fenghua') {
+    initFenghua();
+  }
+};
+
 } // end of initApp()
