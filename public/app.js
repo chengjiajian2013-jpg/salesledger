@@ -2738,10 +2738,10 @@ function renderFenghuaList() {
       const sign = t.type === 'income' ? '+' : '-';
 
       html += `
-        <div class="fenghua-transaction" data-id="${t.id}">
+        <div class="fenghua-transaction" data-id="${t.id}" onclick="editFenghuaTransaction('${t.id}')" style="cursor:pointer;">
           <div class="fenghua-transaction__icon">${cat.icon}</div>
           <div class="fenghua-transaction__info">
-            <div class="fenghua-transaction__title">${t.title}</div>
+            <div class="fenghua-transaction__title">${escapeHtml(t.title)}</div>
             <div class="fenghua-transaction__category">${cat.name}</div>
           </div>
           <div class="fenghua-transaction__amount ${amountClass}">${sign}¥${t.amount.toFixed(2)}</div>
@@ -2753,6 +2753,168 @@ function renderFenghuaList() {
   });
 
   listContainer.innerHTML = html;
+}
+
+function editFenghuaTransaction(id) {
+  const transaction = fenghuaTransactions.find(t => t.id === id);
+  if (!transaction) return;
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.innerHTML = `
+    <div class="modal-card" style="max-width: 500px;">
+      <div class="modal-card__header">
+        <h3>编辑记录</h3>
+        <button class="modal-card__close">&times;</button>
+      </div>
+      <div class="modal-card__body">
+        <form id="fenghuaEditForm">
+          <div style="margin-bottom: 16px;">
+            <label style="display:block; font-size:0.85rem; color:var(--text-2); margin-bottom:8px;">类型</label>
+            <div style="display:flex; gap:8px;">
+              <button type="button" class="type-btn ${transaction.type === 'expense' ? 'active' : ''}" data-type="expense">支出</button>
+              <button type="button" class="type-btn ${transaction.type === 'income' ? 'active' : ''}" data-type="income">收入</button>
+            </div>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display:block; font-size:0.85rem; color:var(--text-2); margin-bottom:8px;">分类</label>
+            <div id="editCategoryList" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display:block; font-size:0.85rem; color:var(--text-2); margin-bottom:8px;">金额</label>
+            <input type="number" step="0.01" id="editAmount" value="${transaction.amount}" required style="width:100%; padding:10px; border:1px solid var(--border); border-radius:8px; font-size:0.9rem;">
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display:block; font-size:0.85rem; color:var(--text-2); margin-bottom:8px;">备注</label>
+            <input type="text" id="editTitle" value="${escapeHtml(transaction.title)}" required style="width:100%; padding:10px; border:1px solid var(--border); border-radius:8px; font-size:0.9rem;">
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display:block; font-size:0.85rem; color:var(--text-2); margin-bottom:8px;">日期</label>
+            <input type="date" id="editDate" value="${transaction.date}" required style="width:100%; padding:10px; border:1px solid var(--border); border-radius:8px; font-size:0.9rem;">
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button type="submit" style="flex:1; padding:12px; background:var(--primary); color:#fff; border:none; border-radius:8px; font-size:0.9rem; cursor:pointer;">保存</button>
+            <button type="button" id="deleteBtn" style="flex:1; padding:12px; background:var(--danger); color:#fff; border:none; border-radius:8px; font-size:0.9rem; cursor:pointer;">删除</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  let selectedType = transaction.type;
+  let selectedCategory = transaction.category;
+
+  function updateCategories() {
+    const categoryList = document.getElementById('editCategoryList');
+    const categories = selectedType === 'expense' ? FENGHUA_EXPENSE_CATEGORIES : FENGHUA_INCOME_CATEGORIES;
+    categoryList.innerHTML = categories.map(key => {
+      const cat = FENGHUA_CATEGORIES[key];
+      return `<button type="button" class="category-btn ${key === selectedCategory ? 'active' : ''}" data-category="${key}">${cat.icon} ${cat.name}</button>`;
+    }).join('');
+
+    categoryList.querySelectorAll('.category-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        categoryList.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedCategory = btn.dataset.category;
+      });
+    });
+  }
+
+  modal.querySelectorAll('.type-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      modal.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedType = btn.dataset.type;
+      selectedCategory = selectedType === 'expense' ? 'food' : 'income';
+      updateCategories();
+    });
+  });
+
+  updateCategories();
+
+  modal.querySelector('.modal-card__close').addEventListener('click', () => modal.remove());
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.remove();
+  });
+
+  modal.querySelector('#deleteBtn').addEventListener('click', () => {
+    if (!confirm('确定要删除这条记录吗？')) return;
+
+    const token = sessionStorage.getItem('salesledger_token');
+    fetch(`/api/v1/fenghua/transactions/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(res => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    })
+    .then(result => {
+      if (result.error) {
+        showToast(result.error.message, 'error');
+        return;
+      }
+      modal.remove();
+      loadFenghuaTransactions();
+      showToast('记录已删除', 'success');
+    })
+    .catch(err => {
+      console.error('删除失败:', err);
+      showToast('删除失败: ' + err.message, 'error');
+    });
+  });
+
+  modal.querySelector('#fenghuaEditForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const amount = parseFloat(document.getElementById('editAmount').value);
+    const title = document.getElementById('editTitle').value;
+    const date = document.getElementById('editDate').value;
+
+    if (!amount || amount <= 0) {
+      showToast('请输入有效金额', 'error');
+      return;
+    }
+
+    if (!title.trim()) {
+      showToast('请输入备注', 'error');
+      return;
+    }
+
+    const token = sessionStorage.getItem('salesledger_token');
+    fetch(`/api/v1/fenghua/transactions/${id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        type: selectedType,
+        amount: amount,
+        category: selectedCategory,
+        title: title,
+        date: date
+      })
+    })
+    .then(res => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    })
+    .then(result => {
+      if (result.error) {
+        showToast(result.error.message, 'error');
+        return;
+      }
+      modal.remove();
+      loadFenghuaTransactions();
+      showToast('记录已更新', 'success');
+    })
+    .catch(err => {
+      console.error('更新失败:', err);
+      showToast('更新失败: ' + err.message, 'error');
+    });
+  });
 }
 
 function openFenghuaModal() {
@@ -2998,6 +3160,8 @@ function updateTodoStats() {
 
 function addTodo() {
   const input = document.getElementById('todoInput');
+  const dateInput = document.getElementById('todoDateInput');
+  const recurringCheckbox = document.getElementById('todoRecurringCheckbox');
   if (!input) return;
 
   const text = input.value.trim();
@@ -3007,6 +3171,18 @@ function addTodo() {
   }
 
   const token = sessionStorage.getItem('salesledger_token');
+  const payload = { text: text };
+
+  // 添加日期（如果选择了）
+  if (dateInput && dateInput.value) {
+    payload.due_date = dateInput.value;
+  }
+
+  // 添加重复标记（如果选中了）
+  if (recurringCheckbox && recurringCheckbox.checked) {
+    payload.is_recurring = true;
+  }
+
   // 发送到后端API
   fetch('/api/v1/todos', {
     method: 'POST',
@@ -3014,7 +3190,7 @@ function addTodo() {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`
     },
-    body: JSON.stringify({ text: text })
+    body: JSON.stringify(payload)
   })
   .then(res => {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -3026,6 +3202,8 @@ function addTodo() {
       return;
     }
     input.value = '';
+    if (dateInput) dateInput.value = '';
+    if (recurringCheckbox) recurringCheckbox.checked = false;
     loadTodos();
     showToast('待办已添加', 'success');
   })
@@ -3123,6 +3301,24 @@ function renderTodos() {
     const timeStr = todo.created_at || todo.createdAt || new Date().toISOString();
     const time = new Date(timeStr).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
+    // 构建元数据行
+    let metaHtml = `<div class="todo-item__meta">`;
+    metaHtml += `<span class="todo-item__time">${time}</span>`;
+
+    // 显示日期
+    if (todo.due_date) {
+      const dueDate = new Date(todo.due_date + 'T00:00:00');
+      const dueDateStr = dueDate.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+      metaHtml += `<span class="todo-item__date">📅 ${dueDateStr}</span>`;
+    }
+
+    // 显示重复标记
+    if (todo.is_recurring) {
+      metaHtml += `<span class="todo-item__recurring">🔄 每日</span>`;
+    }
+
+    metaHtml += `</div>`;
+
     html += `
       <div class="todo-item ${completedClass}" data-id="${todo.id}">
         <div class="todo-item__checkbox ${checkedClass}" onclick="toggleTodo('${todo.id}')">
@@ -3130,7 +3326,7 @@ function renderTodos() {
         </div>
         <div class="todo-item__content">
           <div class="todo-item__text">${escapeHtml(todo.text)}</div>
-          <div class="todo-item__time">${time}</div>
+          ${metaHtml}
         </div>
         <button class="todo-item__delete" onclick="deleteTodo('${todo.id}')" title="删除">🗑️</button>
       </div>

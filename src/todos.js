@@ -9,11 +9,12 @@ function generateId() {
 
 /**
  * 获取待办列表
- * GET /api/v1/todos?filter=all|pending|completed
+ * GET /api/v1/todos?filter=all|pending|completed&date=YYYY-MM-DD
  */
 export async function handleGetTodos(request, env) {
   const url = new URL(request.url);
   const filter = url.searchParams.get('filter') || 'all';
+  const date = url.searchParams.get('date');
 
   let sql = `SELECT * FROM todos WHERE 1=1`;
 
@@ -23,7 +24,12 @@ export async function handleGetTodos(request, env) {
     sql += ` AND completed = 1`;
   }
 
-  sql += ` ORDER BY completed ASC, created_at DESC`;
+  if (date) {
+    // 查询指定日期的待办（包括每日重复的）
+    sql += ` AND (due_date = '${date}' OR is_recurring = 1)`;
+  }
+
+  sql += ` ORDER BY is_recurring DESC, completed ASC, due_date ASC, created_at DESC`;
 
   const { results } = await env.DB.prepare(sql).all();
 
@@ -35,7 +41,7 @@ export async function handleGetTodos(request, env) {
 /**
  * 创建待办
  * POST /api/v1/todos
- * Body: { text }
+ * Body: { text, due_date?, is_recurring? }
  */
 export async function handleCreateTodo(request, env) {
   const body = await request.json();
@@ -48,10 +54,13 @@ export async function handleCreateTodo(request, env) {
   }
 
   const id = generateId();
+  const dueDate = body.due_date || null;
+  const isRecurring = body.is_recurring ? 1 : 0;
+
   await env.DB.prepare(`
-    INSERT INTO todos (id, text, completed)
-    VALUES (?, ?, 0)
-  `).bind(id, body.text.trim()).run();
+    INSERT INTO todos (id, text, completed, due_date, is_recurring)
+    VALUES (?, ?, 0, ?, ?)
+  `).bind(id, body.text.trim(), dueDate, isRecurring).run();
 
   const todo = await env.DB.prepare(`
     SELECT * FROM todos WHERE id = ?
@@ -66,7 +75,7 @@ export async function handleCreateTodo(request, env) {
 /**
  * 更新待办
  * PATCH /api/v1/todos/:id
- * Body: { text?, completed? }
+ * Body: { text?, completed?, due_date?, is_recurring? }
  */
 export async function handleUpdateTodo(request, env, id) {
   const body = await request.json();
@@ -80,6 +89,14 @@ export async function handleUpdateTodo(request, env, id) {
   if (body.completed !== undefined) {
     updates.push('completed = ?');
     params.push(body.completed ? 1 : 0);
+  }
+  if (body.due_date !== undefined) {
+    updates.push('due_date = ?');
+    params.push(body.due_date);
+  }
+  if (body.is_recurring !== undefined) {
+    updates.push('is_recurring = ?');
+    params.push(body.is_recurring ? 1 : 0);
   }
 
   if (updates.length === 0) {

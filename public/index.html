@@ -528,6 +528,52 @@ body {
   border-color: #667eea;
   background: var(--surface);
 }
+.todo-date-input {
+  height: 44px;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  padding: 0 12px;
+  font-family: inherit;
+  font-size: 0.85rem;
+  background: var(--surface-2);
+  color: var(--text);
+  outline: none;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+.todo-date-input:focus {
+  border-color: #667eea;
+  background: var(--surface);
+}
+.todo-recurring-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-2);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.todo-recurring-label:hover {
+  border-color: #667eea;
+  background: var(--surface);
+}
+.todo-recurring-label input[type="checkbox"] {
+  display: none;
+}
+.todo-recurring-label input[type="checkbox"]:checked + span {
+  filter: grayscale(0);
+  transform: scale(1.1);
+}
+.todo-recurring-label span {
+  font-size: 1.2rem;
+  filter: grayscale(1);
+  opacity: 0.5;
+  transition: all 0.2s;
+}
 .todo-add-btn {
   width: 44px;
   height: 44px;
@@ -636,10 +682,29 @@ body {
   color: var(--text);
   line-height: 1.4;
 }
+.todo-item__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
 .todo-item__time {
   font-size: 0.72rem;
   color: var(--text-3);
-  margin-top: 4px;
+}
+.todo-item__date {
+  font-size: 0.72rem;
+  color: #667eea;
+  background: rgba(102, 126, 234, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+.todo-item__recurring {
+  font-size: 0.72rem;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
 }
 .todo-item__delete {
   width: 28px;
@@ -1945,6 +2010,11 @@ body {
     <div class="todo-input-container">
       <div class="todo-input-wrapper">
         <input type="text" class="todo-input" id="todoInput" placeholder="添加新的待办事项...">
+        <input type="date" class="todo-date-input" id="todoDateInput" title="选择日期">
+        <label class="todo-recurring-label" title="每日重复">
+          <input type="checkbox" id="todoRecurringCheckbox">
+          <span>🔄</span>
+        </label>
         <button class="todo-add-btn" id="todoAddBtn">+</button>
       </div>
     </div>
