@@ -14,10 +14,12 @@ SalesLedger/
 ├── src/
 │   └── worker.js          # Cloudflare Worker 入口（API + 静态托管）
 ├── public/
-│   ├── index.html         # 单页应用主文件（含完整 CSS）
+│   ├── index.html         # 单页应用主文件（含 Joeyzou 既有 CSS）
+│   ├── fenghua.css        # 风华工作区独立视觉样式
 │   ├── app.js             # 主应用逻辑
 │   ├── modules/           # ES Modules
 │   │   ├── api.js         # fetch 封装 + loading 控制
+│   │   ├── fenghua.js     # 风华账本与待办交互
 │   │   ├── auth.js        # 密码验证
 │   │   ├── state.js       # 全局状态管理
 │   │   ├── format.js      # 格式化工具
@@ -39,10 +41,10 @@ SalesLedger/
 ## 核心约束与红线
 
 ### 架构边界
-- **前端**: 单文件 HTML + 原生 ES Modules，**禁止引入构建工具**（V1 承诺）
-- **后端**: 所有数据库操作在 `src/worker.js`，**禁止前端直接操作 D1**
-- **样式**: 所有 CSS 内联在 `<style>` 块，使用 CSS 变量，**禁止外部样式表**
-- **状态**: 单一 `appState` 对象，**禁止多处 `let` 散落状态**
+- **前端**: 单页 HTML + 原生 ES Modules，**禁止引入构建工具**（V1 承诺）
+- **后端**: 数据库操作由 `src/` 下的 Worker 处理模块负责，**禁止前端直接操作 D1**
+- **样式**: Joeyzou 既有 CSS 保持内联；视觉独立的工作区可使用 `public/` 下的静态样式表，统一使用 CSS 变量且不引入构建步骤
+- **状态**: Joeyzou 使用既有 `appState`；独立工作区只在自己的 ES Module 内维护私有状态，禁止跨工作区共享可变全局状态
 
 ### 数据约束
 - 金额单位：**元**（不是分），存储 `REAL`，显示 2 位小数

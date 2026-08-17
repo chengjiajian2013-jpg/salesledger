@@ -7,6 +7,7 @@ import { formatCurrency, formatDate, todayStr, escapeHtml, capitalizeBrand } fro
 import { isAuthenticated, login } from './modules/auth.js';
 import { callAI } from './modules/ai.js';
 import { getAllChats, createChat, getChat, addMessage, deleteChat, getChatMessages, updateChat, saveFormData, getFormData } from './modules/aiStorageApi.js';
+import { initFenghuaWorkspace } from './modules/fenghua.js';
 
 // ═══ 认证检查 ═══
 const loginPage = document.getElementById('loginPage');
@@ -108,8 +109,9 @@ if (!isAuthenticated()) {
 } else {
   // 已登录，显示应用主界面
   loginPage.style.display = 'none';
-  appContainer.style.display = 'block';
+  appContainer.style.display = 'flex';
   initApp();
+  initFenghuaWorkspace();
 }
 
 // ═══ 应用初始化 ═══

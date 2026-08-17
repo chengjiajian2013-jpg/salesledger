@@ -25,11 +25,12 @@
 
 ```
 public/
-├── index.html              # 入口（HTML 骨架 + 设计系统 CSS）
-├── styles.css              # 业务样式（复用 PersonalOS 设计 token）
+├── index.html              # 入口（HTML 骨架 + Joeyzou 既有 CSS）
+├── fenghua.css             # 风华工作区隔离样式（静态加载、无构建）
 ├── app.js                  # 应用入口：初始化 + 事件绑定
 └── modules/
     ├── api.js              # 后端通信层（fetch 封装）
+    ├── fenghua.js          # 风华账本与待办工作区
     ├── state.js            # 状态管理（store + subscribe）
     ├── router.js           # 视图切换（hash 或 data-view）
     ├── format.js           # 格式化（货币、日期）
@@ -331,7 +332,7 @@ async function withErrorHandling(fn) {
 | 首屏 JS | < 50KB（压缩后） |
 
 **策略**:
-- 关键 CSS 内联（首屏），非关键异步
+- Joeyzou 关键 CSS 内联，独立工作区样式作为可缓存静态资源加载
 - 单一 HTML 文件 + 拆分 JS modules（HTTP/2 并行）
 - 无第三方库
 - 图片极少（icon 用 emoji）

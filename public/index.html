@@ -930,6 +930,7 @@ body {
 }
 
 </style>
+<link rel="stylesheet" href="./fenghua.css">
 </head>
 <body>
 
@@ -972,23 +973,48 @@ body {
   <!-- ═══ HEADER ═══ -->
   <header class="header">
     <div class="header__top">
-      <div class="header__title">Joeyzou记账本</div>
+      <div class="app-switcher" id="appSwitcher">
+        <button class="app-switcher__trigger" id="appSwitcherTrigger" type="button" aria-haspopup="menu" aria-expanded="false">
+          <span class="app-switcher__mark" id="appSwitcherMark" aria-hidden="true">J</span>
+          <span class="app-switcher__label" id="appSwitcherLabel">Joeyzou记账本</span>
+          <svg class="app-switcher__chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>
+        </button>
+        <div class="app-switcher__menu" id="appSwitcherMenu" role="menu" hidden>
+          <button class="app-switcher__option app-switcher__option--active" type="button" role="menuitemradio" aria-checked="true" data-app="joeyzou">
+            <span class="app-switcher__option-mark" aria-hidden="true">J</span>
+            <span><strong>Joeyzou记账本</strong><small>销售与佣金</small></span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>
+          </button>
+          <button class="app-switcher__option" type="button" role="menuitemradio" aria-checked="false" data-app="fenghua">
+            <span class="app-switcher__option-mark app-switcher__option-mark--fenghua" aria-hidden="true">风</span>
+            <span><strong>风华记账</strong><small>日常收支与待办</small></span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>
+          </button>
+        </div>
+      </div>
       <div class="header__monthly-total" id="headerMonthlyTotal">
         <span style="font-size: 0.75rem; color: var(--text-3);">当月总计：</span>
         <span style="font-weight: 700; color: var(--gold);">¥0</span>
       </div>
     </div>
-    <div class="view-tabs" id="viewTabs">
-      <button class="view-tab view-tab--active" data-view="transactions">交易明细</button>
-      <button class="view-tab" data-view="monthly">月度统计</button>
-      <button class="view-tab" data-view="ai">AI助手</button>
+    <div id="joeyzouHeaderControls">
+      <div class="view-tabs" id="viewTabs">
+        <button class="view-tab view-tab--active" data-view="transactions">交易明细</button>
+        <button class="view-tab" data-view="monthly">月度统计</button>
+        <button class="view-tab" data-view="ai">AI助手</button>
+      </div>
+      <div class="seller-tabs" id="sellerTabs">
+        <button class="seller-tab seller-tab--active" data-seller="company">公司</button>
+        <button class="seller-tab" data-seller="personal">个人</button>
+      </div>
     </div>
-    <div class="seller-tabs" id="sellerTabs">
-      <button class="seller-tab seller-tab--active" data-seller="company">公司</button>
-      <button class="seller-tab" data-seller="personal">个人</button>
+    <div class="fenghua-tabs" id="fenghuaHeaderControls" role="tablist" aria-label="风华记账功能" hidden>
+      <button class="fenghua-tab fenghua-tab--active" id="fenghuaLedgerTab" type="button" role="tab" aria-selected="true" aria-controls="fenghuaLedgerView" data-fenghua-view="ledger">账本</button>
+      <button class="fenghua-tab" id="fenghuaTodosTab" type="button" role="tab" aria-selected="false" aria-controls="fenghuaTodosView" data-fenghua-view="todos">待办</button>
     </div>
   </header>
 
+  <div class="workspace workspace--active" id="joeyzouWorkspace">
   <!-- ═══ CONTENT ═══ -->
   <main class="content" id="content">
 
@@ -1233,6 +1259,126 @@ body {
       </form>
     </div>
   </div>
+  </div>
+
+  <section class="workspace fenghua-workspace" id="fenghuaWorkspace" aria-label="风华记账" hidden>
+    <main class="fenghua-main">
+      <section class="fenghua-view fenghua-view--active" id="fenghuaLedgerView" role="tabpanel" aria-labelledby="fenghuaLedgerTab" data-fenghua-panel="ledger">
+        <div class="fenghua-monthbar">
+          <div>
+            <h1>本月收支</h1>
+            <p id="fenghuaMonthCaption">把每一笔日常，都记得清楚</p>
+          </div>
+          <div class="fenghua-monthbar__controls">
+            <button class="fenghua-icon-button" id="fenghuaPrevMonth" type="button" aria-label="上个月" title="上个月">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
+            <input id="fenghuaMonth" type="month" aria-label="选择账本月份">
+            <button class="fenghua-icon-button" id="fenghuaNextMonth" type="button" aria-label="下个月" title="下个月">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="fenghua-balance" aria-label="月度收支概览">
+          <div class="fenghua-balance__primary">
+            <span>本月结余</span>
+            <strong id="fenghuaBalance">¥0.00</strong>
+          </div>
+          <div class="fenghua-balance__breakdown">
+            <div><span>收入</span><strong id="fenghuaIncome">¥0.00</strong></div>
+            <div><span>支出</span><strong id="fenghuaExpense">¥0.00</strong></div>
+          </div>
+        </div>
+
+        <div class="fenghua-section-heading">
+          <h2>收支明细</h2>
+          <span id="fenghuaEntryCount">0 笔</span>
+        </div>
+        <div class="fenghua-list" id="fenghuaEntryList" aria-live="polite"></div>
+      </section>
+
+      <section class="fenghua-view" id="fenghuaTodosView" role="tabpanel" aria-labelledby="fenghuaTodosTab" data-fenghua-panel="todos" hidden>
+        <div class="fenghua-todo-intro">
+          <div>
+            <h1>今日待办</h1>
+            <p id="fenghuaTodoSummary">先完成最重要的一件事</p>
+          </div>
+          <span class="fenghua-todo-count" id="fenghuaTodoCount">0</span>
+        </div>
+
+        <form class="fenghua-todo-form" id="fenghuaTodoForm">
+          <label class="fenghua-field fenghua-field--grow">
+            <span>待办事项</span>
+            <input id="fenghuaTodoContent" type="text" maxlength="120" autocomplete="off" placeholder="例如：整理本月票据" required>
+          </label>
+          <label class="fenghua-field fenghua-field--date">
+            <span>截止日期</span>
+            <input id="fenghuaTodoDate" type="date">
+          </label>
+          <button class="fenghua-add-todo" type="submit" aria-label="添加待办" title="添加待办">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+        </form>
+
+        <div class="fenghua-todo-filters" id="fenghuaTodoFilters" aria-label="筛选待办事项">
+          <button class="fenghua-todo-filter fenghua-todo-filter--active" type="button" data-todo-filter="all" aria-pressed="true">全部</button>
+          <button class="fenghua-todo-filter" type="button" data-todo-filter="pending" aria-pressed="false">待完成</button>
+          <button class="fenghua-todo-filter" type="button" data-todo-filter="completed" aria-pressed="false">已完成</button>
+        </div>
+        <div class="fenghua-todo-list" id="fenghuaTodoList" aria-live="polite"></div>
+      </section>
+      <div class="fenghua-status" id="fenghuaStatus" aria-live="polite"></div>
+    </main>
+
+    <button class="fenghua-fab" id="fenghuaFab" type="button" aria-label="添加账目" title="添加账目">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+
+    <dialog class="fenghua-dialog" id="fenghuaEntryDialog" aria-labelledby="fenghuaDialogTitle">
+      <form id="fenghuaEntryForm" method="dialog">
+        <div class="fenghua-dialog__header">
+          <div>
+            <h2 id="fenghuaDialogTitle">记一笔</h2>
+            <p>收入与支出，保持简单</p>
+          </div>
+          <button class="fenghua-dialog__close" id="fenghuaDialogClose" type="button" aria-label="关闭" title="关闭">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+
+        <div class="fenghua-type-control" id="fenghuaTypeControl">
+          <button class="fenghua-type-button fenghua-type-button--active" type="button" data-entry-type="expense" aria-pressed="true">支出</button>
+          <button class="fenghua-type-button" type="button" data-entry-type="income" aria-pressed="false">收入</button>
+        </div>
+        <input id="fenghuaEntryType" type="hidden" value="expense">
+
+        <div class="fenghua-form-grid">
+          <label class="fenghua-field fenghua-field--amount">
+            <span>金额</span>
+            <span class="fenghua-amount-input"><i>¥</i><input id="fenghuaEntryAmount" type="number" min="0.01" max="99999999" step="0.01" inputmode="decimal" placeholder="0.00" required></span>
+          </label>
+          <label class="fenghua-field">
+            <span>分类</span>
+            <select id="fenghuaEntryCategory" required></select>
+          </label>
+          <label class="fenghua-field">
+            <span>日期</span>
+            <input id="fenghuaEntryDate" type="date" required>
+          </label>
+          <label class="fenghua-field">
+            <span>备注</span>
+            <input id="fenghuaEntryNote" type="text" maxlength="200" placeholder="写点什么，可留空">
+          </label>
+        </div>
+        <div class="fenghua-form-error" id="fenghuaFormError" role="alert"></div>
+        <div class="fenghua-dialog__actions">
+          <button class="fenghua-delete-entry" id="fenghuaDeleteEntry" type="button" hidden>删除</button>
+          <button class="fenghua-save-entry" id="fenghuaSaveEntry" type="submit">保存账目</button>
+        </div>
+      </form>
+    </dialog>
+  </section>
 
 </div>
 
