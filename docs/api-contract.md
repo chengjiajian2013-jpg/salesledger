@@ -254,6 +254,34 @@
 
 ---
 
+### 2.8 风华记账
+
+所有接口沿用现有 Bearer Token 鉴权，数据存放于独立的 `fenghua_entries` 表。
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/v1/fenghua/entries?month=YYYY-MM&page=1&pageSize=100` | 按月查询账目；单页最多 100 条；`meta.summary` 返回收入、支出和结余 |
+| POST | `/api/v1/fenghua/entries` | 新增账目 |
+| PATCH | `/api/v1/fenghua/entries/:id` | 部分更新账目 |
+| DELETE | `/api/v1/fenghua/entries/:id` | 删除账目 |
+
+新增或更新字段：`type` (`income` / `expense`)、`amount`（0.01–99,999,999 元，最多两位小数）、`category`、`date` (`YYYY-MM-DD`) 和可选 `note`。
+
+### 2.9 风华待办
+
+待办存放于独立的 `fenghua_todos` 表，不包含优先级、重复规则或提醒。
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/v1/fenghua/todos?page=1&pageSize=100` | 查询待办；单页最多 100 条 |
+| POST | `/api/v1/fenghua/todos` | 新增待办 |
+| PATCH | `/api/v1/fenghua/todos/:id` | 更新内容、截止日期或完成状态 |
+| DELETE | `/api/v1/fenghua/todos/:id` | 删除待办 |
+
+字段：`content`（1–120 字符）、可选 `dueDate` (`YYYY-MM-DD`) 和 `isCompleted`（布尔值）。
+
+---
+
 ## 3. 鉴权（V1 预留）
 
 V1 为单用户模式，**不做真实鉴权**。但接口设计预留：

@@ -28,6 +28,30 @@ export const SCHEMA_STATEMENTS = [
   `CREATE INDEX IF NOT EXISTS idx_transactions_seller ON transactions(seller)`,
   `CREATE INDEX IF NOT EXISTS idx_transactions_channel ON transactions(channel)`,
 
+  // 风华记账：普通个人收支，与销售交易完全隔离
+  `CREATE TABLE IF NOT EXISTS fenghua_entries (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    type        TEXT NOT NULL CHECK (type IN ('income', 'expense')),
+    amount      REAL NOT NULL CHECK (amount > 0),
+    category    TEXT NOT NULL,
+    date        TEXT NOT NULL,
+    note        TEXT NOT NULL DEFAULT '',
+    created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_fenghua_entries_date ON fenghua_entries(date DESC)`,
+
+  // 风华待办：轻量任务，不包含提醒、优先级或重复规则
+  `CREATE TABLE IF NOT EXISTS fenghua_todos (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    content       TEXT NOT NULL,
+    due_date      TEXT,
+    is_completed  INTEGER NOT NULL DEFAULT 0 CHECK (is_completed IN (0, 1)),
+    created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_fenghua_todos_status_due ON fenghua_todos(is_completed, due_date)`,
+
   // AI对话表
   `CREATE TABLE IF NOT EXISTS ai_chats (
     id              TEXT    PRIMARY KEY,

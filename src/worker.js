@@ -6,6 +6,8 @@ import { handleSummary } from './summary.js';
 import { handleParse } from './parse.js';
 import { handleLogin, requireAuth } from './auth.js';
 import { handleAIChat } from './ai.js';
+import { handleFenghuaEntries, handleFenghuaEntry } from './fenghua.js';
+import { handleFenghuaTodos, handleFenghuaTodo } from './todos.js';
 import {
   handleGetChats,
   handleCreateChat,
@@ -102,6 +104,14 @@ export default {
             response = await handleSummary(request, env);
           } else if (path === '/api/v1/options' && method === 'GET') {
             response = await handleOptions(env);
+          } else if (path === '/api/v1/fenghua/entries' && ['GET', 'POST'].includes(method)) {
+            response = await handleFenghuaEntries(request, env);
+          } else if (path.match(/^\/api\/v1\/fenghua\/entries\/\d+$/) && ['PATCH', 'DELETE'].includes(method)) {
+            response = await handleFenghuaEntry(request, env, Number(path.split('/').pop()));
+          } else if (path === '/api/v1/fenghua/todos' && ['GET', 'POST'].includes(method)) {
+            response = await handleFenghuaTodos(request, env);
+          } else if (path.match(/^\/api\/v1\/fenghua\/todos\/\d+$/) && ['PATCH', 'DELETE'].includes(method)) {
+            response = await handleFenghuaTodo(request, env, Number(path.split('/').pop()));
           } else if (path === '/api/v1/parse' && method === 'POST') {
             response = await handleParse(request, env);
           } else if (path === '/api/v1/ai/chat' && method === 'POST') {
