@@ -23,13 +23,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Remove legacy plain-text access key binding
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy --env test
-
       - name: Deploy to Cloudflare Workers (Test)
         uses: cloudflare/wrangler-action@v3
         with:
