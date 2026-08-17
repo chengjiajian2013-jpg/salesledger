@@ -1,164 +1,126 @@
-// 待办事项API模块
+import { validateTodo } from './fenghuaValidation.mjs';
 
-/**
- * 生成唯一ID
- */
-function generateId() {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2);
+export async function handleFenghuaTodos(request, env) {
+  if (request.method === 'GET') return listTodos(request, env);
+  if (request.method === 'POST') return createTodo(request, env);
+  return jsonError('METHOD_NOT_ALLOWED', '请求方法不支持', 405);
 }
 
-/**
- * 获取待办列表
- * GET /api/v1/todos?filter=all|pending|completed&date=YYYY-MM-DD
- */
-export async function handleGetTodos(request, env) {
-  const url = new URL(request.url);
-  const filter = url.searchParams.get('filter') || 'all';
-  const date = url.searchParams.get('date');
-
-  let sql = `SELECT * FROM todos WHERE 1=1`;
-
-  if (filter === 'pending') {
-    sql += ` AND completed = 0`;
-  } else if (filter === 'completed') {
-    sql += ` AND completed = 1`;
+export async function handleFenghuaTodo(request, env, id) {
+  if (request.method === 'PATCH') return updateTodo(request, env, id);
+  if (request.method === 'DELETE') {
+    await env.DB.prepare('DELETE FROM fenghua_todos WHERE id = ?').bind(id).run();
+    return new Response(null, { status: 204 });
   }
+  return jsonError('METHOD_NOT_ALLOWED', '请求方法不支持', 405);
+}
 
-  if (date) {
-    // 查询指定日期的待办（包括每日重复的）
-    sql += ` AND (due_date = '${date}' OR is_recurring = 1)`;
-  }
+async function listTodos(request, env) {
+  const params = new URL(request.url).searchParams;
+  const page = positiveInt(params.get('page'), 1);
+  const pageSize = Math.min(100, positiveInt(params.get('pageSize'), 100));
+  const offset = (page - 1) * pageSize;
 
-  sql += ` ORDER BY is_recurring DESC, completed ASC, due_date ASC, created_at DESC`;
+  const [rows, totalRow] = await Promise.all([
+    env.DB.prepare(`
+      SELECT id, content, due_date, is_completed, created_at, updated_at
+      FROM fenghua_todos
+      ORDER BY is_completed ASC, due_date IS NULL ASC, due_date ASC, id DESC
+      LIMIT ? OFFSET ?
+    `).bind(pageSize, offset).all(),
+    env.DB.prepare('SELECT COUNT(*) AS total FROM fenghua_todos').first(),
+  ]);
 
-  const { results } = await env.DB.prepare(sql).all();
-
-  return new Response(JSON.stringify({ data: results }), {
-    headers: { 'Content-Type': 'application/json' },
+  const totalItems = Number(totalRow?.total || 0);
+  return Response.json({
+    data: rows.results.map(formatTodo),
+    meta: { pagination: { page, pageSize, totalItems, totalPages: Math.ceil(totalItems / pageSize) } },
   });
 }
 
-/**
- * 创建待办
- * POST /api/v1/todos
- * Body: { text, due_date?, is_recurring? }
- */
-export async function handleCreateTodo(request, env) {
-  const body = await request.json();
+async function createTodo(request, env) {
+  const body = await readJson(request);
+  if (body instanceof Response) return body;
+  if (!isObjectBody(body)) return invalidBody();
+  const normalized = normalizeTodo(body);
+  const errors = validateTodo(normalized);
+  if (errors.length) return jsonError('VALIDATION_ERROR', '待办内容有误', 422, errors);
 
-  if (!body.text || !body.text.trim()) {
-    return new Response(JSON.stringify({ error: { message: '待办内容不能为空' } }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-
-  const id = generateId();
-  const dueDate = body.due_date || null;
-  const isRecurring = body.is_recurring ? 1 : 0;
-
-  await env.DB.prepare(`
-    INSERT INTO todos (id, text, completed, due_date, is_recurring)
-    VALUES (?, ?, 0, ?, ?)
-  `).bind(id, body.text.trim(), dueDate, isRecurring).run();
-
-  const todo = await env.DB.prepare(`
-    SELECT * FROM todos WHERE id = ?
-  `).bind(id).first();
-
-  return new Response(JSON.stringify({ data: todo }), {
-    status: 201,
-    headers: { 'Content-Type': 'application/json' },
-  });
-}
-
-/**
- * 更新待办
- * PATCH /api/v1/todos/:id
- * Body: { text?, completed?, due_date?, is_recurring? }
- */
-export async function handleUpdateTodo(request, env, id) {
-  const body = await request.json();
-  const updates = [];
-  const params = [];
-
-  if (body.text !== undefined) {
-    updates.push('text = ?');
-    params.push(body.text);
-  }
-  if (body.completed !== undefined) {
-    updates.push('completed = ?');
-    params.push(body.completed ? 1 : 0);
-  }
-  if (body.due_date !== undefined) {
-    updates.push('due_date = ?');
-    params.push(body.due_date);
-  }
-  if (body.is_recurring !== undefined) {
-    updates.push('is_recurring = ?');
-    params.push(body.is_recurring ? 1 : 0);
-  }
-
-  if (updates.length === 0) {
-    return new Response(JSON.stringify({ error: { message: '没有可更新的字段' } }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-
-  updates.push('updated_at = datetime("now")');
-  params.push(id);
-
-  await env.DB.prepare(`
-    UPDATE todos SET ${updates.join(', ')} WHERE id = ?
-  `).bind(...params).run();
-
-  const todo = await env.DB.prepare(`
-    SELECT * FROM todos WHERE id = ?
-  `).bind(id).first();
-
-  return new Response(JSON.stringify({ data: todo }), {
-    headers: { 'Content-Type': 'application/json' },
-  });
-}
-
-/**
- * 删除待办
- * DELETE /api/v1/todos/:id
- */
-export async function handleDeleteTodo(request, env, id) {
   const result = await env.DB.prepare(`
-    DELETE FROM todos WHERE id = ?
-  `).bind(id).run();
-
-  if (result.meta.changes === 0) {
-    return new Response(JSON.stringify({ error: { message: '待办不存在' } }), {
-      status: 404,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-
-  return new Response(JSON.stringify({ data: { success: true } }), {
-    headers: { 'Content-Type': 'application/json' },
-  });
+    INSERT INTO fenghua_todos (content, due_date, is_completed)
+    VALUES (?, ?, ?)
+  `).bind(normalized.content, normalized.dueDate, normalized.isCompleted ? 1 : 0).run();
+  return Response.json({ data: await getTodo(env, result.meta.last_row_id) }, { status: 201 });
 }
 
-/**
- * 获取待办统计
- * GET /api/v1/todos/stats
- */
-export async function handleGetTodoStats(request, env) {
-  const { results } = await env.DB.prepare(`
-    SELECT
-      COUNT(*) as total,
-      SUM(CASE WHEN completed = 0 THEN 1 ELSE 0 END) as pending,
-      SUM(CASE WHEN completed = 1 THEN 1 ELSE 0 END) as completed
-    FROM todos
-  `).all();
+async function updateTodo(request, env, id) {
+  const existing = await getTodo(env, id);
+  if (!existing) return jsonError('RESOURCE_NOT_FOUND', '待办事项不存在', 404);
 
-  const stats = results[0] || { total: 0, pending: 0, completed: 0 };
+  const body = await readJson(request);
+  if (body instanceof Response) return body;
+  if (!isObjectBody(body)) return invalidBody();
+  const merged = normalizeTodo({ ...existing, ...body });
+  const errors = validateTodo(merged);
+  if (errors.length) return jsonError('VALIDATION_ERROR', '待办内容有误', 422, errors);
 
-  return new Response(JSON.stringify({ data: stats }), {
-    headers: { 'Content-Type': 'application/json' },
-  });
+  await env.DB.prepare(`
+    UPDATE fenghua_todos
+    SET content = ?, due_date = ?, is_completed = ?, updated_at = datetime('now')
+    WHERE id = ?
+  `).bind(merged.content, merged.dueDate, merged.isCompleted ? 1 : 0, id).run();
+  return Response.json({ data: await getTodo(env, id) });
+}
+
+async function getTodo(env, id) {
+  const row = await env.DB.prepare(`
+    SELECT id, content, due_date, is_completed, created_at, updated_at
+    FROM fenghua_todos WHERE id = ?
+  `).bind(id).first();
+  return row ? formatTodo(row) : null;
+}
+
+function normalizeTodo(value) {
+  return {
+    content: typeof value.content === 'string' ? value.content.trim() : value.content,
+    dueDate: value.dueDate === '' || value.dueDate === undefined ? null : value.dueDate,
+    isCompleted: value.isCompleted ?? false,
+  };
+}
+
+function formatTodo(row) {
+  return {
+    id: row.id,
+    content: row.content,
+    dueDate: row.due_date || null,
+    isCompleted: Boolean(row.is_completed),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function positiveInt(value, fallback) {
+  const parsed = Number.parseInt(value || '', 10);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+async function readJson(request) {
+  try { return await request.json(); }
+  catch { return jsonError('MALFORMED_JSON', '请求体 JSON 解析失败', 400); }
+}
+
+function isObjectBody(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function invalidBody() {
+  return jsonError('VALIDATION_ERROR', '待办内容有误', 422, [
+    { field: 'body', code: 'INVALID_VALUE', message: '请求体必须是 JSON 对象' },
+  ]);
+}
+
+function jsonError(code, message, status, details = null) {
+  const body = { error: { code, message } };
+  if (details) body.error.details = details;
+  return Response.json(body, { status });
 }

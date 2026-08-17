@@ -1,190 +1,159 @@
-// 风华记账API模块
+import { validateLedgerEntry, validateMonth } from './fenghuaValidation.mjs';
 
-/**
- * 生成唯一ID
- */
-function generateId() {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2);
+export async function handleFenghuaEntries(request, env) {
+  if (request.method === 'GET') return listEntries(request, env);
+  if (request.method === 'POST') return createEntry(request, env);
+  return jsonError('METHOD_NOT_ALLOWED', '请求方法不支持', 405);
 }
 
-/**
- * 获取交易列表
- * GET /api/v1/fenghua/transactions?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD&type=expense|income&category=xxx
- */
-export async function handleGetFenghuaTransactions(request, env) {
-  const url = new URL(request.url);
-  const startDate = url.searchParams.get('startDate');
-  const endDate = url.searchParams.get('endDate');
-  const type = url.searchParams.get('type');
-  const category = url.searchParams.get('category');
-
-  let sql = `SELECT * FROM fenghua_transactions WHERE 1=1`;
-  const params = [];
-
-  if (startDate) {
-    sql += ` AND date >= ?`;
-    params.push(startDate);
+export async function handleFenghuaEntry(request, env, id) {
+  if (request.method === 'PATCH') return updateEntry(request, env, id);
+  if (request.method === 'DELETE') {
+    await env.DB.prepare('DELETE FROM fenghua_entries WHERE id = ?').bind(id).run();
+    return new Response(null, { status: 204 });
   }
-  if (endDate) {
-    sql += ` AND date <= ?`;
-    params.push(endDate);
-  }
-  if (type) {
-    sql += ` AND type = ?`;
-    params.push(type);
-  }
-  if (category && category !== 'all') {
-    sql += ` AND category = ?`;
-    params.push(category);
-  }
+  return jsonError('METHOD_NOT_ALLOWED', '请求方法不支持', 405);
+}
 
-  sql += ` ORDER BY date DESC, created_at DESC`;
+async function listEntries(request, env) {
+  const params = new URL(request.url).searchParams;
+  const month = params.get('month');
+  if (!validateMonth(month)) return jsonError('INVALID_QUERY', '月份格式应为 YYYY-MM', 400);
 
-  const { results } = await env.DB.prepare(sql).bind(...params).all();
+  const page = positiveInt(params.get('page'), 1);
+  const pageSize = Math.min(100, positiveInt(params.get('pageSize'), 100));
+  const startDate = `${month}-01`;
+  const [year, monthNumber] = month.split('-').map(Number);
+  const nextMonth = new Date(Date.UTC(year, monthNumber, 1));
+  const endDate = `${nextMonth.getUTCFullYear()}-${String(nextMonth.getUTCMonth() + 1).padStart(2, '0')}-01`;
+  const offset = (page - 1) * pageSize;
 
-  return new Response(JSON.stringify({ data: results }), {
-    headers: { 'Content-Type': 'application/json' },
+  const [rows, totalRow, summary] = await Promise.all([
+    env.DB.prepare(`
+      SELECT id, type, amount, category, date, note, created_at, updated_at
+      FROM fenghua_entries
+      WHERE date >= ? AND date < ?
+      ORDER BY date DESC, id DESC
+      LIMIT ? OFFSET ?
+    `).bind(startDate, endDate, pageSize, offset).all(),
+    env.DB.prepare('SELECT COUNT(*) AS total FROM fenghua_entries WHERE date >= ? AND date < ?')
+      .bind(startDate, endDate).first(),
+    env.DB.prepare(`
+      SELECT
+        COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) AS income,
+        COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) AS expense
+      FROM fenghua_entries
+      WHERE date >= ? AND date < ?
+    `).bind(startDate, endDate).first(),
+  ]);
+
+  const totalItems = Number(totalRow?.total || 0);
+  const income = round2(summary?.income);
+  const expense = round2(summary?.expense);
+  return Response.json({
+    data: rows.results.map(formatEntry),
+    meta: {
+      month,
+      summary: { income, expense, balance: round2(income - expense) },
+      pagination: { page, pageSize, totalItems, totalPages: Math.ceil(totalItems / pageSize) },
+    },
   });
 }
 
-/**
- * 创建交易
- * POST /api/v1/fenghua/transactions
- * Body: { type, amount, category, title, date }
- */
-export async function handleCreateFenghuaTransaction(request, env) {
-  const body = await request.json();
+async function createEntry(request, env) {
+  const body = await readJson(request);
+  if (body instanceof Response) return body;
+  if (!isObjectBody(body)) return invalidBody();
 
-  if (!body.type || !body.amount || !body.category || !body.title || !body.date) {
-    return new Response(JSON.stringify({ error: { message: '缺少必填字段' } }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
+  const normalized = normalizeEntry(body);
+  const errors = validateLedgerEntry(normalized);
+  if (errors.length) return jsonError('VALIDATION_ERROR', '账目内容有误', 422, errors);
 
-  if (!['expense', 'income'].includes(body.type)) {
-    return new Response(JSON.stringify({ error: { message: 'type必须是expense或income' } }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-
-  const id = generateId();
-  await env.DB.prepare(`
-    INSERT INTO fenghua_transactions (id, type, amount, category, title, date)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `).bind(id, body.type, body.amount, body.category, body.title, body.date).run();
-
-  const transaction = await env.DB.prepare(`
-    SELECT * FROM fenghua_transactions WHERE id = ?
-  `).bind(id).first();
-
-  return new Response(JSON.stringify({ data: transaction }), {
-    status: 201,
-    headers: { 'Content-Type': 'application/json' },
-  });
-}
-
-/**
- * 更新交易
- * PATCH /api/v1/fenghua/transactions/:id
- */
-export async function handleUpdateFenghuaTransaction(request, env, id) {
-  const body = await request.json();
-  const updates = [];
-  const params = [];
-
-  if (body.type !== undefined) {
-    updates.push('type = ?');
-    params.push(body.type);
-  }
-  if (body.amount !== undefined) {
-    updates.push('amount = ?');
-    params.push(body.amount);
-  }
-  if (body.category !== undefined) {
-    updates.push('category = ?');
-    params.push(body.category);
-  }
-  if (body.title !== undefined) {
-    updates.push('title = ?');
-    params.push(body.title);
-  }
-  if (body.date !== undefined) {
-    updates.push('date = ?');
-    params.push(body.date);
-  }
-
-  if (updates.length === 0) {
-    return new Response(JSON.stringify({ error: { message: '没有可更新的字段' } }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-
-  updates.push('updated_at = datetime("now")');
-  params.push(id);
-
-  await env.DB.prepare(`
-    UPDATE fenghua_transactions SET ${updates.join(', ')} WHERE id = ?
-  `).bind(...params).run();
-
-  const transaction = await env.DB.prepare(`
-    SELECT * FROM fenghua_transactions WHERE id = ?
-  `).bind(id).first();
-
-  return new Response(JSON.stringify({ data: transaction }), {
-    headers: { 'Content-Type': 'application/json' },
-  });
-}
-
-/**
- * 删除交易
- * DELETE /api/v1/fenghua/transactions/:id
- */
-export async function handleDeleteFenghuaTransaction(request, env, id) {
   const result = await env.DB.prepare(`
-    DELETE FROM fenghua_transactions WHERE id = ?
-  `).bind(id).run();
+    INSERT INTO fenghua_entries (type, amount, category, date, note)
+    VALUES (?, ?, ?, ?, ?)
+  `).bind(normalized.type, round2(normalized.amount), normalized.category, normalized.date, normalized.note).run();
 
-  if (result.meta.changes === 0) {
-    return new Response(JSON.stringify({ error: { message: '记录不存在' } }), {
-      status: 404,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-
-  return new Response(JSON.stringify({ data: { success: true } }), {
-    headers: { 'Content-Type': 'application/json' },
-  });
+  return Response.json({ data: await getEntry(env, result.meta.last_row_id) }, { status: 201 });
 }
 
-/**
- * 获取月度汇总
- * GET /api/v1/fenghua/summary?year=YYYY&month=MM
- */
-export async function handleGetFenghuaSummary(request, env) {
-  const url = new URL(request.url);
-  const year = url.searchParams.get('year') || new Date().getFullYear();
-  const month = url.searchParams.get('month') || String(new Date().getMonth() + 1).padStart(2, '0');
+async function updateEntry(request, env, id) {
+  const existing = await getEntry(env, id);
+  if (!existing) return jsonError('RESOURCE_NOT_FOUND', '账目不存在', 404);
 
-  const startDate = `${year}-${month}-01`;
-  const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
-  const endDate = `${year}-${month}-${lastDay}`;
+  const body = await readJson(request);
+  if (body instanceof Response) return body;
+  if (!isObjectBody(body)) return invalidBody();
+  const merged = normalizeEntry({ ...existing, ...body });
+  const errors = validateLedgerEntry(merged);
+  if (errors.length) return jsonError('VALIDATION_ERROR', '账目内容有误', 422, errors);
 
-  const { results } = await env.DB.prepare(`
-    SELECT
-      COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) as income,
-      COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) as expense,
-      COUNT(*) as count
-    FROM fenghua_transactions
-    WHERE date >= ? AND date <= ?
-  `).bind(startDate, endDate).all();
+  await env.DB.prepare(`
+    UPDATE fenghua_entries
+    SET type = ?, amount = ?, category = ?, date = ?, note = ?, updated_at = datetime('now')
+    WHERE id = ?
+  `).bind(merged.type, round2(merged.amount), merged.category, merged.date, merged.note, id).run();
 
-  const summary = results[0] || { income: 0, expense: 0, count: 0 };
-  summary.balance = summary.income - summary.expense;
+  return Response.json({ data: await getEntry(env, id) });
+}
 
-  return new Response(JSON.stringify({ data: summary }), {
-    headers: { 'Content-Type': 'application/json' },
-  });
+async function getEntry(env, id) {
+  const row = await env.DB.prepare(`
+    SELECT id, type, amount, category, date, note, created_at, updated_at
+    FROM fenghua_entries WHERE id = ?
+  `).bind(id).first();
+  return row ? formatEntry(row) : null;
+}
+
+function normalizeEntry(value) {
+  return {
+    type: value.type,
+    amount: typeof value.amount === 'string' ? Number(value.amount) : value.amount,
+    category: value.category,
+    date: value.date,
+    note: typeof value.note === 'string' ? value.note.trim() : '',
+  };
+}
+
+function formatEntry(row) {
+  return {
+    id: row.id,
+    type: row.type,
+    amount: round2(row.amount),
+    category: row.category,
+    date: row.date,
+    note: row.note || '',
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function positiveInt(value, fallback) {
+  const parsed = Number.parseInt(value || '', 10);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function round2(value) {
+  return Math.round((Number(value) || 0) * 100) / 100;
+}
+
+async function readJson(request) {
+  try { return await request.json(); }
+  catch { return jsonError('MALFORMED_JSON', '请求体 JSON 解析失败', 400); }
+}
+
+function isObjectBody(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function invalidBody() {
+  return jsonError('VALIDATION_ERROR', '账目内容有误', 422, [
+    { field: 'body', code: 'INVALID_VALUE', message: '请求体必须是 JSON 对象' },
+  ]);
+}
+
+function jsonError(code, message, status, details = null) {
+  const body = { error: { code, message } };
+  if (details) body.error.details = details;
+  return Response.json(body, { status });
 }

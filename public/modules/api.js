@@ -73,6 +73,24 @@ async function request(path, { method = 'GET', body, params } = {}) {
   }
 }
 
+export async function collectPaginated(fetchPage, params = {}) {
+  const pageSize = 100;
+  const baseParams = { ...params };
+  delete baseParams.page;
+  delete baseParams.pageSize;
+
+  const first = await fetchPage({ ...baseParams, page: 1, pageSize });
+  const data = [...(first?.data || [])];
+  const totalPages = Math.max(1, Number(first?.meta?.pagination?.totalPages) || 1);
+
+  for (let page = 2; page <= totalPages; page++) {
+    const response = await fetchPage({ ...baseParams, page, pageSize });
+    data.push(...(response?.data || []));
+  }
+
+  return { ...first, data };
+}
+
 export const api = {
   listTransactions: (params) => request('/transactions', { params }),
   getTransaction: (id) => request(`/transactions/${id}`),
@@ -82,5 +100,19 @@ export const api = {
   getSummary: (params) => request('/summary', { params }),
   parse: (body) => request('/parse', { method: 'POST', body }),
   getOptions: () => request('/options'),
+  listFenghuaEntries: (params) => collectPaginated(
+    pageParams => request('/fenghua/entries', { params: pageParams }),
+    params,
+  ),
+  createFenghuaEntry: (body) => request('/fenghua/entries', { method: 'POST', body }),
+  updateFenghuaEntry: (id, body) => request(`/fenghua/entries/${id}`, { method: 'PATCH', body }),
+  deleteFenghuaEntry: (id) => request(`/fenghua/entries/${id}`, { method: 'DELETE' }),
+  listFenghuaTodos: (params) => collectPaginated(
+    pageParams => request('/fenghua/todos', { params: pageParams }),
+    params,
+  ),
+  createFenghuaTodo: (body) => request('/fenghua/todos', { method: 'POST', body }),
+  updateFenghuaTodo: (id, body) => request(`/fenghua/todos/${id}`, { method: 'PATCH', body }),
+  deleteFenghuaTodo: (id) => request(`/fenghua/todos/${id}`, { method: 'DELETE' }),
   health: () => request('/health'),
 };

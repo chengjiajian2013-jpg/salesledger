@@ -1,0 +1,947 @@
+.workspace {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.workspace[hidden],
+[hidden] {
+  display: none !important;
+}
+
+.app-switcher {
+  position: relative;
+  z-index: 420;
+}
+
+.app-switcher__trigger {
+  height: 42px;
+  max-width: 230px;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: 600 1rem/1 var(--font-serif);
+  cursor: pointer;
+  border-radius: 8px;
+  padding: 0 8px 0 0;
+}
+
+.app-switcher__trigger:hover {
+  background: var(--surface-2);
+}
+
+.app-switcher__trigger:focus-visible,
+.app-switcher__option:focus-visible,
+.fenghua-workspace button:focus-visible,
+.fenghua-workspace input:focus-visible,
+.fenghua-workspace select:focus-visible {
+  outline: 3px solid rgba(181, 71, 53, 0.32);
+  outline-offset: 2px;
+}
+
+.app-switcher__mark,
+.app-switcher__option-mark {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 7px;
+  background: var(--accent);
+  color: var(--surface);
+  font: 700 0.8rem/1 var(--font-sans);
+}
+
+.app-switcher__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-switcher__chevron,
+.app-switcher__option > svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.app-switcher__chevron {
+  color: var(--text-3);
+  transition: transform var(--transition);
+}
+
+.app-switcher__trigger[aria-expanded="true"] .app-switcher__chevron {
+  transform: rotate(180deg);
+}
+
+.app-switcher__menu {
+  position: absolute;
+  top: 46px;
+  left: 0;
+  width: min(310px, calc(100vw - 32px));
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 14px 34px rgba(28, 26, 23, 0.14), 0 3px 8px rgba(28, 26, 23, 0.06);
+  transform-origin: top left;
+  animation: appMenuIn 180ms var(--ease) both;
+}
+
+.app-switcher__option {
+  width: 100%;
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: 36px 1fr 20px;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  border-radius: 7px;
+  padding: 7px 9px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.app-switcher__option:hover,
+.app-switcher__option--active {
+  background: var(--surface-2);
+}
+
+.app-switcher__option strong,
+.app-switcher__option small {
+  display: block;
+}
+
+.app-switcher__option strong {
+  font-size: 0.84rem;
+  font-weight: 650;
+}
+
+.app-switcher__option small {
+  margin-top: 2px;
+  color: var(--text-3);
+  font-size: 0.68rem;
+}
+
+.app-switcher__option > svg {
+  opacity: 0;
+  color: var(--gold);
+}
+
+.app-switcher__option--active > svg {
+  opacity: 1;
+}
+
+.app-switcher__option-mark--fenghua,
+.app--fenghua .app-switcher__mark {
+  background: #b54735;
+  color: #fffaf3;
+  font-family: var(--font-serif);
+}
+
+@keyframes appMenuIn {
+  from { opacity: 0; transform: translateY(-5px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.app--fenghua::before {
+  background: #b54735;
+}
+
+.app--fenghua .header {
+  background: #17382f;
+  border-bottom-color: rgba(255, 255, 255, 0.12);
+}
+
+.app--fenghua .app-switcher__trigger {
+  color: #fffaf3;
+}
+
+.app--fenghua .app-switcher__trigger:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.app--fenghua .app-switcher__chevron {
+  color: #b9c8c2;
+}
+
+.fenghua-tabs {
+  height: 46px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22px;
+}
+
+.fenghua-tab {
+  position: relative;
+  border: 0;
+  background: transparent;
+  color: #aebfb9;
+  font: 600 0.84rem/1 var(--font-sans);
+  cursor: pointer;
+}
+
+.fenghua-tab::after {
+  content: '';
+  position: absolute;
+  left: 25%;
+  right: 25%;
+  bottom: 0;
+  height: 2px;
+  background: #d67b64;
+  transform: scaleX(0);
+  transition: transform 220ms var(--ease);
+}
+
+.fenghua-tab--active {
+  color: #fffaf3;
+}
+
+.fenghua-tab--active::after {
+  transform: scaleX(1);
+}
+
+.fenghua-workspace {
+  --fh-bg: #f2f0e9;
+  --fh-paper: #fbfaf6;
+  --fh-ink: #1e2824;
+  --fh-muted: #59635e;
+  --fh-line: #d9d4c9;
+  --fh-green: #17382f;
+  --fh-green-soft: #dfe8e3;
+  --fh-red: #b54735;
+  --fh-red-soft: #f4e3de;
+  --fh-income: #2d6a55;
+  background: var(--fh-bg);
+  color: var(--fh-ink);
+}
+
+.fenghua-main {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 22px 20px calc(var(--safe-bottom) + 92px);
+}
+
+.fenghua-view {
+  min-height: 100%;
+}
+
+.fenghua-view--active {
+  animation: fenghuaReveal 380ms var(--ease) both;
+}
+
+@keyframes fenghuaReveal {
+  from { opacity: 0.35; clip-path: inset(0 0 12% 0); }
+  to { opacity: 1; clip-path: inset(0); }
+}
+
+.fenghua-monthbar,
+.fenghua-todo-intro {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.fenghua-monthbar h1,
+.fenghua-todo-intro h1 {
+  font: 650 1.35rem/1.25 var(--font-serif);
+  color: var(--fh-ink);
+}
+
+.fenghua-monthbar p,
+.fenghua-todo-intro p {
+  margin-top: 4px;
+  color: var(--fh-muted);
+  font-size: 0.72rem;
+}
+
+.fenghua-monthbar__controls {
+  display: grid;
+  grid-template-columns: 38px minmax(102px, 1fr) 38px;
+  gap: 5px;
+  align-items: center;
+}
+
+.fenghua-monthbar input,
+.fenghua-icon-button {
+  height: 38px;
+  border: 1px solid var(--fh-line);
+  background: var(--fh-paper);
+  color: var(--fh-ink);
+}
+
+.fenghua-monthbar input {
+  width: 100%;
+  min-width: 0;
+  border-radius: 6px;
+  padding: 0 8px;
+  font: 600 0.72rem/1 var(--font-numeric);
+}
+
+.fenghua-icon-button {
+  width: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.fenghua-icon-button:hover {
+  border-color: var(--fh-green);
+  color: var(--fh-green);
+}
+
+.fenghua-icon-button svg,
+.fenghua-fab svg,
+.fenghua-add-todo svg,
+.fenghua-dialog__close svg,
+.fenghua-row-action svg,
+.fenghua-todo-check svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.fenghua-balance {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1.25fr 1fr;
+  min-height: 146px;
+  overflow: hidden;
+  background: var(--fh-green);
+  color: #f7f2e8;
+  border-radius: 8px;
+  box-shadow: 0 10px 24px rgba(23, 56, 47, 0.16), 0 2px 5px rgba(23, 56, 47, 0.1);
+}
+
+.fenghua-balance::after {
+  content: '风华';
+  position: absolute;
+  right: -5px;
+  bottom: -28px;
+  color: rgba(255, 255, 255, 0.045);
+  font: 700 5rem/1 var(--font-serif);
+  pointer-events: none;
+}
+
+.fenghua-balance__primary {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 24px 20px;
+  border-right: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.fenghua-balance span {
+  color: #c6d3ce;
+  font-size: 0.7rem;
+}
+
+.fenghua-balance__primary strong {
+  margin-top: 7px;
+  font: 680 1.65rem/1.2 var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+}
+
+.fenghua-balance__breakdown {
+  display: grid;
+  align-content: center;
+  gap: 17px;
+  padding: 20px;
+}
+
+.fenghua-balance__breakdown div {
+  display: flex;
+  flex-direction: column;
+}
+
+.fenghua-balance__breakdown strong {
+  margin-top: 2px;
+  font: 650 0.9rem/1.2 var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+}
+
+.fenghua-balance__breakdown div:last-child strong {
+  color: #f2b3a3;
+}
+
+.fenghua-section-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 28px 0 11px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--fh-line);
+}
+
+.fenghua-section-heading h2 {
+  font: 650 1rem/1.25 var(--font-serif);
+}
+
+.fenghua-section-heading span {
+  color: var(--fh-muted);
+  font-size: 0.68rem;
+}
+
+.fenghua-date-group + .fenghua-date-group {
+  margin-top: 18px;
+}
+
+.fenghua-date-heading {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  color: var(--fh-muted);
+  font-size: 0.68rem;
+}
+
+.fenghua-entry-row,
+.fenghua-todo-row {
+  display: grid;
+  align-items: center;
+  gap: 11px;
+  min-height: 62px;
+  border-bottom: 1px solid var(--fh-line);
+}
+
+.fenghua-entry-row {
+  grid-template-columns: 34px minmax(0, 1fr) auto 34px;
+}
+
+.fenghua-entry-mark {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  background: var(--fh-green-soft);
+  color: var(--fh-green);
+  font: 650 0.75rem/1 var(--font-serif);
+}
+
+.fenghua-entry-row--expense .fenghua-entry-mark {
+  background: var(--fh-red-soft);
+  color: var(--fh-red);
+}
+
+.fenghua-entry-copy,
+.fenghua-todo-copy {
+  min-width: 0;
+}
+
+.fenghua-entry-copy strong,
+.fenghua-todo-copy strong {
+  display: block;
+  overflow: hidden;
+  color: var(--fh-ink);
+  font-size: 0.83rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fenghua-entry-copy span,
+.fenghua-todo-copy span {
+  display: block;
+  margin-top: 2px;
+  color: var(--fh-muted);
+  font-size: 0.66rem;
+}
+
+.fenghua-entry-amount {
+  color: var(--fh-income);
+  font: 670 0.92rem/1 var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.fenghua-entry-row--expense .fenghua-entry-amount {
+  color: var(--fh-red);
+}
+
+.fenghua-row-action {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fh-muted);
+  cursor: pointer;
+}
+
+.fenghua-row-action:hover {
+  background: var(--fh-green-soft);
+  color: var(--fh-green);
+}
+
+.fenghua-empty,
+.fenghua-error {
+  display: grid;
+  justify-items: center;
+  padding: 42px 24px;
+  color: var(--fh-muted);
+  text-align: center;
+}
+
+.fenghua-empty svg,
+.fenghua-error svg {
+  width: 44px;
+  height: 44px;
+  margin-bottom: 12px;
+  fill: none;
+  stroke: var(--fh-line);
+  stroke-width: 1.5;
+}
+
+.fenghua-empty strong,
+.fenghua-error strong {
+  color: var(--fh-ink);
+  font-size: 0.84rem;
+}
+
+.fenghua-empty p,
+.fenghua-error p {
+  margin-top: 4px;
+  font-size: 0.7rem;
+}
+
+.fenghua-error button {
+  min-height: 40px;
+  margin-top: 14px;
+  border: 1px solid var(--fh-line);
+  border-radius: 6px;
+  padding: 0 16px;
+  background: var(--fh-paper);
+  color: var(--fh-ink);
+  cursor: pointer;
+}
+
+.fenghua-fab {
+  position: absolute;
+  right: 20px;
+  bottom: calc(var(--safe-bottom) + 22px);
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--fh-red);
+  color: #fff;
+  box-shadow: 0 9px 20px rgba(181, 71, 53, 0.28), 0 2px 5px rgba(80, 24, 16, 0.16);
+  cursor: pointer;
+  transition: transform 160ms var(--ease), box-shadow 160ms var(--ease);
+}
+
+.fenghua-fab:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px rgba(181, 71, 53, 0.32), 0 3px 6px rgba(80, 24, 16, 0.18);
+}
+
+.fenghua-fab:active {
+  transform: scale(0.94);
+}
+
+.fenghua-todo-count {
+  min-width: 42px;
+  color: var(--fh-red);
+  font: 700 2rem/1 var(--font-numeric);
+  text-align: right;
+}
+
+.fenghua-todo-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 130px 44px;
+  align-items: end;
+  gap: 8px;
+  padding: 16px;
+  background: var(--fh-paper);
+  border: 1px solid var(--fh-line);
+  border-radius: 8px;
+}
+
+.fenghua-field {
+  display: grid;
+  gap: 6px;
+}
+
+.fenghua-field > span:first-child {
+  color: var(--fh-muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.fenghua-field input,
+.fenghua-field select {
+  width: 100%;
+  height: 44px;
+  min-width: 0;
+  border: 1px solid var(--fh-line);
+  border-radius: 6px;
+  padding: 0 11px;
+  background: #fff;
+  color: var(--fh-ink);
+  font: 400 0.82rem/1 var(--font-sans);
+}
+
+.fenghua-field input::placeholder {
+  color: #606a65;
+}
+
+.fenghua-field input:focus,
+.fenghua-field select:focus {
+  border-color: var(--fh-green);
+}
+
+.fenghua-add-todo {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: var(--fh-green);
+  color: #fff;
+  cursor: pointer;
+}
+
+.fenghua-todo-filters {
+  display: flex;
+  gap: 22px;
+  margin: 24px 0 7px;
+  border-bottom: 1px solid var(--fh-line);
+}
+
+.fenghua-todo-filter {
+  position: relative;
+  min-height: 40px;
+  border: 0;
+  background: transparent;
+  color: var(--fh-muted);
+  font: 600 0.76rem/1 var(--font-sans);
+  cursor: pointer;
+}
+
+.fenghua-todo-filter::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  background: var(--fh-red);
+  transform: scaleX(0);
+  transition: transform 180ms var(--ease);
+}
+
+.fenghua-todo-filter--active {
+  color: var(--fh-ink);
+}
+
+.fenghua-todo-filter--active::after {
+  transform: scaleX(1);
+}
+
+.fenghua-todo-row {
+  grid-template-columns: 38px minmax(0, 1fr) 34px;
+}
+
+.fenghua-todo-check {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--fh-line);
+  border-radius: 50%;
+  background: var(--fh-paper);
+  color: transparent;
+  cursor: pointer;
+}
+
+.fenghua-todo-check--completed {
+  border-color: var(--fh-green);
+  background: var(--fh-green);
+  color: #fff;
+}
+
+.fenghua-todo-check svg {
+  width: 16px;
+  height: 16px;
+}
+
+.fenghua-todo-row--completed .fenghua-todo-copy strong {
+  color: var(--fh-muted);
+  text-decoration: line-through;
+}
+
+.fenghua-todo-row--overdue .fenghua-todo-copy span {
+  color: var(--fh-red);
+}
+
+.fenghua-status {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--safe-bottom) + 82px);
+  z-index: 80;
+  max-width: calc(100% - 40px);
+  padding: 7px 11px;
+  border: 1px solid var(--fh-line);
+  border-radius: 6px;
+  background: var(--fh-paper);
+  color: var(--fh-muted);
+  font-size: 0.7rem;
+  text-align: center;
+  box-shadow: 0 7px 18px rgba(15, 34, 29, 0.12), 0 2px 4px rgba(15, 34, 29, 0.06);
+  transform: translateX(-50%);
+}
+
+.fenghua-status:empty {
+  display: none;
+}
+
+.fenghua-dialog {
+  width: min(390px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  margin: auto;
+  overflow-y: auto;
+  border: 0;
+  border-radius: 8px;
+  padding: 22px;
+  background: var(--fh-paper, #fbfaf6);
+  color: var(--fh-ink, #1e2824);
+  box-shadow: 0 22px 56px rgba(15, 34, 29, 0.25), 0 4px 12px rgba(15, 34, 29, 0.12);
+}
+
+.fenghua-dialog[open] {
+  animation: fenghuaDialogIn 260ms var(--ease) both;
+}
+
+.fenghua-dialog::backdrop {
+  background: rgba(12, 24, 20, 0.58);
+  backdrop-filter: blur(3px);
+}
+
+@keyframes fenghuaDialogIn {
+  from { opacity: 0; transform: translateY(16px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.fenghua-dialog__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.fenghua-dialog__header h2 {
+  font: 650 1.2rem/1.25 var(--font-serif);
+}
+
+.fenghua-dialog__header p {
+  margin-top: 3px;
+  color: var(--fh-muted);
+  font-size: 0.7rem;
+}
+
+.fenghua-dialog__close {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fh-muted);
+  cursor: pointer;
+}
+
+.fenghua-dialog__close:hover {
+  background: var(--fh-red-soft);
+  color: var(--fh-red);
+}
+
+.fenghua-type-control {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--fh-line);
+}
+
+.fenghua-type-button {
+  position: relative;
+  height: 42px;
+  border: 0;
+  background: transparent;
+  color: var(--fh-muted);
+  font: 650 0.8rem/1 var(--font-sans);
+  cursor: pointer;
+}
+
+.fenghua-type-button::after {
+  content: '';
+  position: absolute;
+  right: 25%;
+  bottom: -1px;
+  left: 25%;
+  height: 2px;
+  background: var(--fh-red);
+  transform: scaleX(0);
+  transition: transform 180ms var(--ease);
+}
+
+.fenghua-type-button--active {
+  color: var(--fh-ink);
+}
+
+.fenghua-type-button--active::after {
+  transform: scaleX(1);
+}
+
+.fenghua-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 12px;
+}
+
+.fenghua-field--amount {
+  grid-column: 1 / -1;
+}
+
+.fenghua-amount-input {
+  position: relative;
+  display: block;
+}
+
+.fenghua-amount-input i {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  z-index: 1;
+  color: var(--fh-muted);
+  font: normal 600 1rem/1 var(--font-numeric);
+  transform: translateY(-50%);
+}
+
+.fenghua-amount-input input {
+  height: 56px;
+  padding-left: 32px;
+  font: 680 1.45rem/1 var(--font-numeric);
+}
+
+.fenghua-form-error {
+  min-height: 20px;
+  margin-top: 10px;
+  color: var(--fh-red);
+  font-size: 0.72rem;
+}
+
+.fenghua-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.fenghua-dialog__actions button {
+  min-height: 44px;
+  border-radius: 6px;
+  padding: 0 18px;
+  font: 650 0.8rem/1 var(--font-sans);
+  cursor: pointer;
+}
+
+.fenghua-save-entry {
+  border: 0;
+  background: var(--fh-green);
+  color: #fff;
+}
+
+.fenghua-delete-entry {
+  margin-right: auto;
+  border: 1px solid var(--fh-line);
+  background: transparent;
+  color: var(--fh-red);
+}
+
+@media (max-width: 380px) {
+  .app-switcher__trigger {
+    max-width: 190px;
+  }
+
+  .fenghua-main {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .fenghua-monthbar {
+    display: grid;
+  }
+
+  .fenghua-monthbar__controls {
+    grid-template-columns: 40px minmax(0, 1fr) 40px;
+  }
+
+  .fenghua-todo-form {
+    grid-template-columns: minmax(0, 1fr) 44px;
+  }
+
+  .fenghua-field--date {
+    grid-column: 1 / 2;
+  }
+
+  .fenghua-add-todo {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .fenghua-balance {
+    grid-template-columns: 1fr;
+  }
+
+  .fenghua-balance__primary {
+    border-right: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+  }
+
+  .fenghua-balance__breakdown {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .fenghua-entry-row {
+    grid-template-columns: 32px minmax(0, 1fr) auto 32px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fenghua-view--active,
+  .fenghua-dialog[open],
+  .app-switcher__menu {
+    animation-duration: 1ms;
+  }
+
+  .fenghua-fab,
+  .fenghua-tab::after,
+  .fenghua-todo-filter::after {
+    transition-duration: 1ms;
+  }
+}

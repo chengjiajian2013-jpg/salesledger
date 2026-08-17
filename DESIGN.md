@@ -34,6 +34,17 @@ colors:
   danger: "#C4554D"
   dangerSoft: "#FAE8E6"
 
+  # 风华记账工作区：现代东方编辑感
+  fenghuaBackground: "#F2F0E9"
+  fenghuaPaper: "#FBFAF6"
+  fenghuaInk: "#1E2824"
+  fenghuaMuted: "#59635E"
+  fenghuaLine: "#D9D4C9"
+  fenghuaGreen: "#17382F"
+  fenghuaGreenSoft: "#DFE8E3"
+  fenghuaRed: "#B54735"
+  fenghuaRedSoft: "#F4E3DE"
+
 typography:
   fontFamily:
     sans: "-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif"
@@ -59,6 +70,8 @@ typography:
 
 rounded:
   sm: "6px"
+  compact: "7px"
+  ledger: "8px"
   md: "10px"
   lg: "14px"
   full: "9999px"
@@ -106,6 +119,15 @@ components:
 **Aesthetic:** Warm neutrals (米白/beige backgrounds) with strategic gold accents for premium feel, deep green for profit emphasis. Inspired by high-end stationery and boutique receipt aesthetics.
 
 **Mood:** Professional yet approachable, efficient but not clinical. Feels like a personal assistant rather than corporate accounting software.
+
+## Fenghua Workspace
+
+风华记账与 Joeyzou 共用应用框架、登录和基础交互规范，但拥有独立视觉身份。页面使用暖灰纸张色、墨绿主界面与少量朱红操作色，形成现代东方编辑感；不把风华配色带入 Joeyzou 的销售记账区域。
+
+- 墨绿用于风华顶栏、月度结余和主要操作。
+- 朱红用于支出、当前页签和新增账目。
+- 收支明细采用无卡片的日期分组列表，待办采用清单行。
+- 紧凑操作使用 6–8px 圆角，只有浮动新增按钮和完成勾选保持圆形。
 
 ## Colors
 
@@ -404,7 +426,8 @@ border: 2px solid var(--border-strong);
 ## Implementation notes
 
 **CSS architecture:**
-- Single-file CSS in `<style>` block (no external stylesheet)
+- Joeyzou legacy CSS remains in the `<style>` block
+- Visually isolated workspaces may use a dedicated static stylesheet such as `public/fenghua.css`
 - CSS custom properties for all tokens
 - BEM-style naming for components
 - Mobile-first, desktop enhancements via min-width queries
