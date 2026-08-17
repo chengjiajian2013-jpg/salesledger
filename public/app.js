@@ -2637,7 +2637,7 @@ function loadFenghuaTransactions() {
     params.set('category', fenghuaSelectedCategory);
   }
 
-  const token = localStorage.getItem('token');
+  const token = sessionStorage.getItem('salesledger_token');
   fetch(`/api/v1/fenghua/transactions?${params.toString()}`, {
     headers: { 'Authorization': `Bearer ${token}` }
   })
@@ -2861,7 +2861,7 @@ function openFenghuaModal() {
       return;
     }
 
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('salesledger_token');
     // 发送到后端API
     fetch('/api/v1/fenghua/transactions', {
       method: 'POST',
@@ -2948,7 +2948,7 @@ function initTodo() {
 }
 
 function loadTodos() {
-  const token = localStorage.getItem('token');
+  const token = sessionStorage.getItem('salesledger_token');
   // 从后端API获取数据
   fetch(`/api/v1/todos?filter=${todoFilter}`, {
     headers: { 'Authorization': `Bearer ${token}` }
@@ -2972,7 +2972,7 @@ function loadTodos() {
 }
 
 function updateTodoStats() {
-  const token = localStorage.getItem('token');
+  const token = sessionStorage.getItem('salesledger_token');
   fetch('/api/v1/todos/stats', {
     headers: { 'Authorization': `Bearer ${token}` }
   })
@@ -3006,7 +3006,7 @@ function addTodo() {
     return;
   }
 
-  const token = localStorage.getItem('token');
+  const token = sessionStorage.getItem('salesledger_token');
   // 发送到后端API
   fetch('/api/v1/todos', {
     method: 'POST',
@@ -3039,7 +3039,7 @@ function toggleTodo(id) {
   const todo = todoList.find(t => t.id === id);
   if (!todo) return;
 
-  const token = localStorage.getItem('token');
+  const token = sessionStorage.getItem('salesledger_token');
   // 发送到后端API
   fetch(`/api/v1/todos/${id}`, {
     method: 'PATCH',
@@ -3067,7 +3067,7 @@ function toggleTodo(id) {
 }
 
 function deleteTodo(id) {
-  const token = localStorage.getItem('token');
+  const token = sessionStorage.getItem('salesledger_token');
   // 发送到后端API
   fetch(`/api/v1/todos/${id}`, {
     method: 'DELETE',
