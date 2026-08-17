@@ -2637,9 +2637,18 @@ function loadFenghuaTransactions() {
     params.set('category', fenghuaSelectedCategory);
   }
 
-  fetch(`/api/v1/fenghua/transactions?${params.toString()}`)
-    .then(res => res.json())
+  const token = localStorage.getItem('token');
+  fetch(`/api/v1/fenghua/transactions?${params.toString()}`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  })
+    .then(res => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    })
     .then(result => {
+      if (result.error) {
+        throw new Error(result.error.message);
+      }
       const monthData = result.data || [];
 
       let income = 0;
@@ -2665,7 +2674,7 @@ function loadFenghuaTransactions() {
     })
     .catch(err => {
       console.error('加载交易失败:', err);
-      showToast('加载数据失败', 'error');
+      showToast('加载数据失败: ' + err.message, 'error');
     });
 }
 
@@ -2852,10 +2861,14 @@ function openFenghuaModal() {
       return;
     }
 
+    const token = localStorage.getItem('token');
     // 发送到后端API
     fetch('/api/v1/fenghua/transactions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
       body: JSON.stringify({
         type: selectedType,
         amount: amount,
@@ -2864,7 +2877,10 @@ function openFenghuaModal() {
         date: date
       })
     })
-    .then(res => res.json())
+    .then(res => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    })
     .then(result => {
       if (result.error) {
         showToast(result.error.message, 'error');
@@ -2876,7 +2892,7 @@ function openFenghuaModal() {
     })
     .catch(err => {
       console.error('保存失败:', err);
-      showToast('保存失败', 'error');
+      showToast('保存失败: ' + err.message, 'error');
     });
   });
 
@@ -2932,24 +2948,42 @@ function initTodo() {
 }
 
 function loadTodos() {
+  const token = localStorage.getItem('token');
   // 从后端API获取数据
-  fetch(`/api/v1/todos?filter=${todoFilter}`)
-    .then(res => res.json())
+  fetch(`/api/v1/todos?filter=${todoFilter}`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  })
+    .then(res => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    })
     .then(result => {
+      if (result.error) {
+        throw new Error(result.error.message);
+      }
       todoList = result.data || [];
       renderTodos();
       updateTodoStats();
     })
     .catch(err => {
       console.error('加载待办失败:', err);
-      showToast('加载数据失败', 'error');
+      showToast('加载数据失败: ' + err.message, 'error');
     });
 }
 
 function updateTodoStats() {
-  fetch('/api/v1/todos/stats')
-    .then(res => res.json())
+  const token = localStorage.getItem('token');
+  fetch('/api/v1/todos/stats', {
+    headers: { 'Authorization': `Bearer ${token}` }
+  })
+    .then(res => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    })
     .then(result => {
+      if (result.error) {
+        throw new Error(result.error.message);
+      }
       const stats = result.data || { total: 0, pending: 0, completed: 0 };
       const pendingEl = document.getElementById('todoPending');
       const completedEl = document.getElementById('todoCompleted');
@@ -2972,13 +3006,20 @@ function addTodo() {
     return;
   }
 
+  const token = localStorage.getItem('token');
   // 发送到后端API
   fetch('/api/v1/todos', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
     body: JSON.stringify({ text: text })
   })
-  .then(res => res.json())
+  .then(res => {
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  })
   .then(result => {
     if (result.error) {
       showToast(result.error.message, 'error');
@@ -2990,7 +3031,7 @@ function addTodo() {
   })
   .catch(err => {
     console.error('添加失败:', err);
-    showToast('添加失败', 'error');
+    showToast('添加失败: ' + err.message, 'error');
   });
 }
 
@@ -2998,13 +3039,20 @@ function toggleTodo(id) {
   const todo = todoList.find(t => t.id === id);
   if (!todo) return;
 
+  const token = localStorage.getItem('token');
   // 发送到后端API
   fetch(`/api/v1/todos/${id}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
     body: JSON.stringify({ completed: !todo.completed })
   })
-  .then(res => res.json())
+  .then(res => {
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  })
   .then(result => {
     if (result.error) {
       showToast(result.error.message, 'error');
@@ -3014,16 +3062,21 @@ function toggleTodo(id) {
   })
   .catch(err => {
     console.error('更新失败:', err);
-    showToast('更新失败', 'error');
+    showToast('更新失败: ' + err.message, 'error');
   });
 }
 
 function deleteTodo(id) {
+  const token = localStorage.getItem('token');
   // 发送到后端API
   fetch(`/api/v1/todos/${id}`, {
-    method: 'DELETE'
+    method: 'DELETE',
+    headers: { 'Authorization': `Bearer ${token}` }
   })
-  .then(res => res.json())
+  .then(res => {
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  })
   .then(result => {
     if (result.error) {
       showToast(result.error.message, 'error');
@@ -3034,7 +3087,7 @@ function deleteTodo(id) {
   })
   .catch(err => {
     console.error('删除失败:', err);
-    showToast('删除失败', 'error');
+    showToast('删除失败: ' + err.message, 'error');
   });
 }
 
@@ -3066,7 +3119,9 @@ function renderTodos() {
   displayList.forEach(todo => {
     const checkedClass = todo.completed ? 'todo-item__checkbox--checked' : '';
     const completedClass = todo.completed ? 'todo-item--completed' : '';
-    const time = new Date(todo.createdAt).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    // 数据库返回的是created_at，不是createdAt
+    const timeStr = todo.created_at || todo.createdAt || new Date().toISOString();
+    const time = new Date(timeStr).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
     html += `
       <div class="todo-item ${completedClass}" data-id="${todo.id}">
