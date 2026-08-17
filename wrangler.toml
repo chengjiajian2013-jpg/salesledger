@@ -30,7 +30,7 @@ ACCESS_KEY = "0725"
 # 测试环境配置
 [env.test]
 name = "salesledger-test"
-vars = { ENV = "test" }
+vars = { ENV = "test", ACCESS_KEY = "0725" }
 
 [[env.test.d1_databases]]
 binding = "DB"
