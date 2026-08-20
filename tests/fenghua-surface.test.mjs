@@ -24,6 +24,9 @@ test('fenghua workspace contains ledger and todo tabs with accessible controls',
   assert.match(html, /data-todo-filter="pending"[^>]+aria-pressed="false"/);
   assert.match(html, /data-entry-type="expense"[^>]+aria-pressed="true"/);
   assert.match(html, /data-entry-type="income"[^>]+aria-pressed="false"/);
+  assert.match(html, /id="fenghuaReport"/);
+  assert.match(html, /id="fenghuaCategoryList"/);
+  assert.match(html, /role="progressbar"/);
 });
 
 test('frontend API module defines isolated fenghua resources', async () => {
@@ -50,4 +53,17 @@ test('worker and schema register protected fenghua resources', async () => {
   assert.match(worker, /\/api\/v1\/fenghua\/todos/);
   assert.match(schema, /fenghua_entries/);
   assert.match(schema, /fenghua_todos/);
+});
+
+test('fenghua has an independent direct entry route', async () => {
+  const [worker, app, fenghua] = await Promise.all([
+    read('../src/worker.js'),
+    read('../public/app.js'),
+    read('../public/modules/fenghua.js'),
+  ]);
+  assert.ok(worker.includes("pathname === '/fenghua'"));
+  assert.match(worker, /Response\.redirect\(url\.toString\(\), 308\)/);
+  assert.ok(fenghua.includes("location.pathname === '/fenghua'"));
+  assert.match(fenghua, /switchApp\('fenghua'\)/);
+  assert.match(app, /document\.title = '风华记账'/);
 });

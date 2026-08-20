@@ -401,6 +401,108 @@
   font-size: 0.68rem;
 }
 
+.fenghua-section-heading--report {
+  align-items: flex-end;
+  margin-top: 26px;
+  margin-bottom: 0;
+}
+
+.fenghua-section-heading--report p {
+  max-width: 260px;
+  margin-top: 4px;
+  color: var(--fh-muted);
+  font-size: 0.7rem;
+}
+
+.fenghua-section-heading--report > span {
+  color: var(--fh-red);
+  font: 650 0.82rem/1.3 var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+}
+
+.fenghua-category-list {
+  padding: 5px 0 2px;
+}
+
+.fenghua-category-row {
+  padding: 10px 0;
+}
+
+.fenghua-category-copy {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 7px;
+}
+
+.fenghua-category-copy > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--fh-ink);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.fenghua-category-copy i {
+  width: 20px;
+  color: var(--fh-muted);
+  font: normal 600 0.66rem/1 var(--font-numeric);
+  text-align: center;
+}
+
+.fenghua-category-copy strong {
+  color: var(--fh-ink);
+  font: 650 0.78rem/1 var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.fenghua-category-copy small {
+  margin-left: 5px;
+  color: var(--fh-muted);
+  font: 500 0.64rem/1 var(--font-numeric);
+}
+
+.fenghua-category-track {
+  height: 7px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--fh-green-soft);
+}
+
+.fenghua-category-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--fh-green);
+  transform-origin: left;
+  animation: fenghuaBarIn 420ms var(--ease) both;
+}
+
+.fenghua-category-row--top .fenghua-category-copy i,
+.fenghua-category-row--top .fenghua-category-copy > span,
+.fenghua-category-row--top .fenghua-category-copy strong {
+  color: var(--fh-red);
+}
+
+.fenghua-category-row--top .fenghua-category-track span {
+  background: var(--fh-red);
+}
+
+.fenghua-report-empty {
+  padding: 22px 0 20px;
+  color: var(--fh-muted);
+  font-size: 0.72rem;
+  text-align: center;
+}
+
+@keyframes fenghuaBarIn {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
 .fenghua-date-group + .fenghua-date-group {
   margin-top: 18px;
 }
@@ -935,7 +1037,8 @@
 @media (prefers-reduced-motion: reduce) {
   .fenghua-view--active,
   .fenghua-dialog[open],
-  .app-switcher__menu {
+  .app-switcher__menu,
+  .fenghua-category-track span {
     animation-duration: 1ms;
   }
 

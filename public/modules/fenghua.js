@@ -1,5 +1,6 @@
 import { api } from './api.js';
 import { escapeHtml, formatCurrency, todayStr } from './format.js';
+import { summarizeExpenseCategories } from './fenghuaReports.js';
 
 const CATEGORY_GROUPS = {
   expense: [
@@ -43,6 +44,9 @@ export function initFenghuaWorkspace() {
   bindEvents();
   updateMonthCaption();
   setEntryType('expense');
+  if (location.pathname === '/fenghua' || location.pathname === '/fenghua/') {
+    switchApp('fenghua');
+  }
 }
 
 function collectDom() {
@@ -68,6 +72,9 @@ function collectDom() {
     balance: byId('fenghuaBalance'),
     income: byId('fenghuaIncome'),
     expense: byId('fenghuaExpense'),
+    reportInsight: byId('fenghuaReportInsight'),
+    reportTotal: byId('fenghuaReportTotal'),
+    categoryList: byId('fenghuaCategoryList'),
     entryCount: byId('fenghuaEntryCount'),
     entryList: byId('fenghuaEntryList'),
     fab: byId('fenghuaFab'),
@@ -224,6 +231,9 @@ function switchFenghuaView(view) {
 async function loadEntries() {
   setStatus('正在读取账本…');
   dom.entryList.innerHTML = loadingMarkup('正在读取本月明细');
+  dom.reportInsight.textContent = '正在整理类目支出';
+  dom.reportTotal.textContent = formatCurrency(0);
+  dom.categoryList.innerHTML = reportLoadingMarkup();
   try {
     const response = await api.listFenghuaEntries({ month });
     entries = response.data || [];
@@ -233,12 +243,41 @@ async function loadEntries() {
     dom.expense.textContent = formatCurrency(summary.expense);
     dom.balance.textContent = formatCurrency(summary.balance);
     dom.entryCount.textContent = `${response.meta?.pagination?.totalItems ?? entries.length} 笔`;
+    renderExpenseReport();
     renderEntries();
     setStatus('');
   } catch (error) {
     dom.entryList.innerHTML = errorMarkup('账本暂时无法读取', '请检查网络后重试', 'data-retry-entries');
+    dom.reportInsight.textContent = '统计暂时无法读取';
+    dom.categoryList.innerHTML = reportEmptyMarkup('请重新加载本月账本');
     setStatus(error.message || '读取账本失败');
   }
+}
+
+function renderExpenseReport() {
+  const labels = Object.fromEntries(CATEGORY_GROUPS.expense.map(([id, label]) => [id, label]));
+  const report = summarizeExpenseCategories(entries, labels);
+  dom.reportTotal.textContent = formatCurrency(report.totalExpense);
+
+  if (!report.categories.length) {
+    dom.reportInsight.textContent = '本月还没有支出记录';
+    dom.categoryList.innerHTML = reportEmptyMarkup('记下支出后，这里会显示类目排行');
+    return;
+  }
+
+  const top = report.categories[0];
+  dom.reportInsight.textContent = `${top.label}支出最高，占本月消费 ${formatPercent(top.share)}`;
+  dom.categoryList.innerHTML = report.categories.map((category, index) => {
+    const percent = formatPercent(category.share);
+    return `
+      <div class="fenghua-category-row${index === 0 ? ' fenghua-category-row--top' : ''}" role="progressbar" aria-label="${category.label} ${formatCurrency(category.amount)}，占比 ${percent}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(category.share * 100)}">
+        <div class="fenghua-category-copy">
+          <span><i aria-hidden="true">${index + 1}</i>${category.label}</span>
+          <strong>${formatCurrency(category.amount)} <small>${percent}</small></strong>
+        </div>
+        <div class="fenghua-category-track" aria-hidden="true"><span style="width: ${Math.max(2, category.share * 100)}%"></span></div>
+      </div>`;
+  }).join('');
 }
 
 function renderEntries() {
@@ -475,6 +514,11 @@ function formatLedgerDate(value) {
   return `${monthNumber}月${day}日 · ${weekday}`;
 }
 
+function formatPercent(value) {
+  const percent = Math.round((Number(value) || 0) * 1000) / 10;
+  return `${percent.toLocaleString('zh-CN', { maximumFractionDigits: 1 })}%`;
+}
+
 function setStatus(message) {
   window.clearTimeout(statusTimer);
   dom.status.textContent = message;
@@ -487,6 +531,17 @@ function setStatus(message) {
 
 function loadingMarkup(message) {
   return `<div class="fenghua-empty" role="status"><strong>${message}</strong></div>`;
+}
+
+function reportLoadingMarkup() {
+  return `
+    <div class="fenghua-category-row" role="progressbar" aria-label="正在加载消费类目" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+      <div class="fenghua-category-track"><span style="width: 0%"></span></div>
+    </div>`;
+}
+
+function reportEmptyMarkup(message) {
+  return `<div class="fenghua-report-empty" role="status">${message}</div>`;
 }
 
 function emptyMarkup(title, detail) {

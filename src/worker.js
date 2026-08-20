@@ -50,6 +50,11 @@ async function serveAssets(request, env) {
   const url = new URL(request.url);
   let pathname = url.pathname;
   if (pathname === '/') pathname = '/index.html';
+  if (pathname === '/fenghua/') {
+    url.pathname = '/fenghua';
+    return Response.redirect(url.toString(), 308);
+  }
+  if (pathname === '/fenghua') pathname = '/index.html';
 
   // ASSETS.fetch 接受路径字符串或 Request
   try {

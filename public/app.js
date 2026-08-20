@@ -9,6 +9,10 @@ import { callAI } from './modules/ai.js';
 import { getAllChats, createChat, getChat, addMessage, deleteChat, getChatMessages, updateChat, saveFormData, getFormData } from './modules/aiStorageApi.js';
 import { initFenghuaWorkspace } from './modules/fenghua.js';
 
+if (location.pathname === '/fenghua' || location.pathname === '/fenghua/') {
+  document.title = '风华记账';
+}
+
 // ═══ 认证检查 ═══
 const loginPage = document.getElementById('loginPage');
 const appContainer = document.getElementById('app');
