@@ -2,6 +2,7 @@
 -- 支持：公司/个人双轨、渠道佣金比例、成本/售价可选
 
 DROP TABLE IF EXISTS transactions;
+DROP TABLE IF EXISTS fenghua_categories;
 DROP TABLE IF EXISTS fenghua_entries;
 DROP TABLE IF EXISTS fenghua_todos;
 DROP TABLE IF EXISTS ai_chats;
@@ -29,6 +30,18 @@ CREATE TABLE transactions (
 CREATE INDEX idx_transactions_date ON transactions(date);
 CREATE INDEX idx_transactions_seller ON transactions(seller);
 CREATE INDEX idx_transactions_channel ON transactions(channel);
+
+CREATE TABLE fenghua_categories (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  category_key TEXT NOT NULL UNIQUE,
+  type         TEXT NOT NULL CHECK (type IN ('income', 'expense')),
+  name         TEXT NOT NULL,
+  created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at   TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (type, name COLLATE NOCASE)
+);
+
+CREATE INDEX idx_fenghua_categories_type ON fenghua_categories(type, name COLLATE NOCASE);
 
 CREATE TABLE fenghua_entries (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,

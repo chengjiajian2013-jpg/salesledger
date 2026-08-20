@@ -1376,6 +1376,13 @@ body {
           <label class="fenghua-field">
             <span>分类</span>
             <select id="fenghuaEntryCategory" required></select>
+            <span class="fenghua-category-creator" id="fenghuaCategoryCreator" hidden>
+              <span>新建类目</span>
+              <span class="fenghua-category-creator__row">
+                <input id="fenghuaNewCategoryName" type="text" maxlength="32" placeholder="例如：宠物、旅行" autocomplete="off">
+                <button id="fenghuaCreateCategory" class="fenghua-category-creator__button" type="button" data-create-category aria-label="保存新类目" title="保存新类目">添加</button>
+              </span>
+            </span>
           </label>
           <label class="fenghua-field">
             <span>日期</span>

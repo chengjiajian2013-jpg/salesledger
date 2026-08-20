@@ -5,6 +5,7 @@ export const LEDGER_CATEGORIES = {
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const MONTH_PATTERN = /^(\d{4})-(\d{2})$/;
+const CUSTOM_CATEGORY_PATTERN = /^custom:\d+$/;
 
 export function validateMonth(value) {
   const match = MONTH_PATTERN.exec(String(value || ''));
@@ -46,7 +47,7 @@ export function validateLedgerEntry(input, { partial = false } = {}) {
     const allowed = value.type
       ? LEDGER_CATEGORIES[value.type] || []
       : Object.values(LEDGER_CATEGORIES).flat();
-    if (!allowed.includes(value.category)) {
+    if (!allowed.includes(value.category) && !CUSTOM_CATEGORY_PATTERN.test(String(value.category || ''))) {
       errors.push(fieldError('category', '请选择与收支类型匹配的分类'));
     }
   }
@@ -60,6 +61,29 @@ export function validateLedgerEntry(input, { partial = false } = {}) {
   if (value.note !== undefined && value.note !== null) {
     if (typeof value.note !== 'string' || value.note.trim().length > 200) {
       errors.push(fieldError('note', '备注不能超过 200 个字符'));
+    }
+  }
+
+  return errors;
+}
+
+export function validateCategory(input, { partial = false } = {}) {
+  const value = input || {};
+  const errors = [];
+
+  if (!partial || value.type !== undefined) {
+    if (!['income', 'expense'].includes(value.type)) {
+      errors.push(fieldError('type', '分类类型必须是收入或支出'));
+    }
+  }
+
+  if (!partial || value.name !== undefined) {
+    if (typeof value.name !== 'string' || !value.name.trim()) {
+      errors.push(fieldError('name', '请输入分类名称'));
+    } else if (value.name.trim().length > 32) {
+      errors.push(fieldError('name', '分类名称不能超过 32 个字符'));
+    } else if (/[<>\u0000-\u001f\u007f]/.test(value.name)) {
+      errors.push(fieldError('name', '分类名称包含不支持的字符'));
     }
   }
 

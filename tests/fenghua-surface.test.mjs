@@ -18,6 +18,9 @@ test('fenghua workspace contains ledger and todo tabs with accessible controls',
   assert.match(html, /data-fenghua-view="ledger"/);
   assert.match(html, /data-fenghua-view="todos"/);
   assert.match(html, /id="fenghuaEntryDialog"/);
+  assert.match(html, /id="fenghuaEntryCategory"/);
+  assert.match(html, /data-create-category/);
+  assert.match(html, /id="fenghuaCategoryCreator"/);
   assert.match(html, /id="fenghuaTodoForm"/);
   assert.match(html, /aria-live="polite"/);
   assert.match(html, /data-todo-filter="all"[^>]+aria-pressed="true"/);
@@ -33,6 +36,8 @@ test('frontend API module defines isolated fenghua resources', async () => {
   const api = await read('../public/modules/api.js');
   assert.match(api, /listFenghuaEntries/);
   assert.match(api, /createFenghuaEntry/);
+  assert.match(api, /listFenghuaCategories/);
+  assert.match(api, /createFenghuaCategory/);
   assert.match(api, /listFenghuaTodos/);
   assert.match(api, /updateFenghuaTodo/);
 });
@@ -40,6 +45,8 @@ test('frontend API module defines isolated fenghua resources', async () => {
 test('fenghua controls never interpolate user text into HTML attributes', async () => {
   const moduleSource = await read('../public/modules/fenghua.js');
   assert.doesNotMatch(moduleSource, /aria-label=\\?"(?:编辑|删除)\$\{/);
+  assert.match(moduleSource, /aria-label="\$\{escapeHtml\(category\.label\)\}/);
+  assert.match(moduleSource, /<span><i aria-hidden="true">\$\{index \+ 1\}<\/i>\$\{escapeHtml\(category\.label\)\}<\/span>/);
   assert.match(moduleSource, /closeSwitcher\(\{ restoreFocus: true \}\)/);
   assert.match(moduleSource, /setAttribute\('aria-pressed'/);
 });
@@ -50,8 +57,10 @@ test('worker and schema register protected fenghua resources', async () => {
     read('../src/schema.js'),
   ]);
   assert.match(worker, /\/api\/v1\/fenghua\/entries/);
+  assert.match(worker, /\/api\/v1\/fenghua\/categories/);
   assert.match(worker, /\/api\/v1\/fenghua\/todos/);
   assert.match(schema, /fenghua_entries/);
+  assert.match(schema, /fenghua_categories/);
   assert.match(schema, /fenghua_todos/);
 });
 

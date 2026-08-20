@@ -107,6 +107,8 @@ export const api = {
   createFenghuaEntry: (body) => request('/fenghua/entries', { method: 'POST', body }),
   updateFenghuaEntry: (id, body) => request(`/fenghua/entries/${id}`, { method: 'PATCH', body }),
   deleteFenghuaEntry: (id) => request(`/fenghua/entries/${id}`, { method: 'DELETE' }),
+  listFenghuaCategories: (params) => request('/fenghua/categories', { params }),
+  createFenghuaCategory: (body) => request('/fenghua/categories', { method: 'POST', body }),
   listFenghuaTodos: (params) => collectPaginated(
     pageParams => request('/fenghua/todos', { params: pageParams }),
     params,

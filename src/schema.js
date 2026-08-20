@@ -28,6 +28,18 @@ export const SCHEMA_STATEMENTS = [
   `CREATE INDEX IF NOT EXISTS idx_transactions_seller ON transactions(seller)`,
   `CREATE INDEX IF NOT EXISTS idx_transactions_channel ON transactions(channel)`,
 
+  // 风华自定义类目：与 Joeyzou 交易和 Fenghua 账目都独立
+  `CREATE TABLE IF NOT EXISTS fenghua_categories (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    category_key TEXT NOT NULL UNIQUE,
+    type         TEXT NOT NULL CHECK (type IN ('income', 'expense')),
+    name         TEXT NOT NULL,
+    created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at   TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE (type, name COLLATE NOCASE)
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_fenghua_categories_type ON fenghua_categories(type, name COLLATE NOCASE)`,
+
   // 风华记账：普通个人收支，与销售交易完全隔离
   `CREATE TABLE IF NOT EXISTS fenghua_entries (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,

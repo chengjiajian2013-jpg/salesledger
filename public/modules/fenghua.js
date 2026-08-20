@@ -21,6 +21,7 @@ const CATEGORY_GROUPS = {
     ['other', '其他', '其'],
   ],
 };
+const CATEGORY_CREATE_VALUE = '__create_category__';
 
 let initialized = false;
 let activeApp = 'joeyzou';
@@ -35,6 +36,9 @@ let todosLoaded = false;
 let statusTimer = null;
 let dialogReturnFocus = null;
 let dom;
+const customCategories = { expense: [], income: [] };
+let categoriesLoaded = false;
+let categoryBeforeCreate = '';
 
 export function initFenghuaWorkspace() {
   if (initialized) return;
@@ -88,6 +92,9 @@ function collectDom() {
     type: byId('fenghuaEntryType'),
     amount: byId('fenghuaEntryAmount'),
     category: byId('fenghuaEntryCategory'),
+    categoryCreator: byId('fenghuaCategoryCreator'),
+    newCategoryName: byId('fenghuaNewCategoryName'),
+    createCategory: byId('fenghuaCreateCategory'),
     date: byId('fenghuaEntryDate'),
     note: byId('fenghuaEntryNote'),
     deleteEntry: byId('fenghuaDeleteEntry'),
@@ -141,6 +148,8 @@ function bindEvents() {
     if (button) setEntryType(button.dataset.entryType);
   });
   dom.form.addEventListener('submit', saveEntry);
+  dom.category.addEventListener('change', handleCategoryChange);
+  dom.createCategory.addEventListener('click', createCategory);
   dom.deleteEntry.addEventListener('click', deleteEditingEntry);
   dom.entryList.addEventListener('click', event => {
     const editButton = event.target.closest('[data-edit-entry]');
@@ -207,6 +216,7 @@ async function switchApp(appName) {
   dom.switcherTrigger.focus();
 
   if (isFenghua) {
+    if (!categoriesLoaded) await loadCategories();
     if (!entriesLoaded) await loadEntries();
     if (!todosLoaded) await loadTodos();
   }
@@ -255,7 +265,10 @@ async function loadEntries() {
 }
 
 function renderExpenseReport() {
-  const labels = Object.fromEntries(CATEGORY_GROUPS.expense.map(([id, label]) => [id, label]));
+  const labels = Object.fromEntries([
+    ...CATEGORY_GROUPS.expense.map(([id, label]) => [id, label]),
+    ...customCategories.expense.map(category => [category.key, category.name]),
+  ]);
   const report = summarizeExpenseCategories(entries, labels);
   dom.reportTotal.textContent = formatCurrency(report.totalExpense);
 
@@ -270,9 +283,9 @@ function renderExpenseReport() {
   dom.categoryList.innerHTML = report.categories.map((category, index) => {
     const percent = formatPercent(category.share);
     return `
-      <div class="fenghua-category-row${index === 0 ? ' fenghua-category-row--top' : ''}" role="progressbar" aria-label="${category.label} ${formatCurrency(category.amount)}，占比 ${percent}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(category.share * 100)}">
+      <div class="fenghua-category-row${index === 0 ? ' fenghua-category-row--top' : ''}" role="progressbar" aria-label="${escapeHtml(category.label)} ${formatCurrency(category.amount)}，占比 ${percent}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(category.share * 100)}">
         <div class="fenghua-category-copy">
-          <span><i aria-hidden="true">${index + 1}</i>${category.label}</span>
+          <span><i aria-hidden="true">${index + 1}</i>${escapeHtml(category.label)}</span>
           <strong>${formatCurrency(category.amount)} <small>${percent}</small></strong>
         </div>
         <div class="fenghua-category-track" aria-hidden="true"><span style="width: ${Math.max(2, category.share * 100)}%"></span></div>
@@ -309,7 +322,7 @@ function entryMarkup(entry) {
   return `
     <article class="fenghua-entry-row fenghua-entry-row--${entry.type}">
       <span class="fenghua-entry-mark" aria-hidden="true">${category.mark}</span>
-      <div class="fenghua-entry-copy"><strong>${escapeHtml(displayTitle)}</strong><span>${category.label}</span></div>
+      <div class="fenghua-entry-copy"><strong>${escapeHtml(displayTitle)}</strong><span>${escapeHtml(category.label)}</span></div>
       <span class="fenghua-entry-amount">${sign}${formatCurrency(entry.amount)}</span>
       <button class="fenghua-row-action" type="button" data-edit-entry="${entry.id}" aria-label="编辑账目" title="编辑账目">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg>
@@ -328,6 +341,8 @@ function openEntryDialog(entryId = null) {
   setEntryType(entry?.type || 'expense');
   dom.amount.value = entry?.amount ?? '';
   dom.category.value = entry?.category || CATEGORY_GROUPS[dom.type.value][0][0];
+  categoryBeforeCreate = dom.category.value;
+  hideCategoryCreator();
   dom.date.value = entry?.date || todayStr();
   dom.note.value = entry?.note || '';
   dom.dialog.showModal();
@@ -346,9 +361,70 @@ function setEntryType(type) {
     button.classList.toggle('fenghua-type-button--active', isActive);
     button.setAttribute('aria-pressed', String(isActive));
   });
-  dom.category.innerHTML = CATEGORY_GROUPS[safeType]
+  const options = CATEGORY_GROUPS[safeType]
     .map(([value, label]) => `<option value="${value}">${label}</option>`)
-    .join('');
+    .concat(customCategories[safeType].map(category => `<option value="${escapeHtml(category.key)}">${escapeHtml(category.name)}</option>`))
+    .concat(`<option value="${CATEGORY_CREATE_VALUE}">＋ 新建类目</option>`);
+  dom.category.innerHTML = options.join('');
+  hideCategoryCreator();
+}
+
+async function loadCategories() {
+  try {
+    const response = await api.listFenghuaCategories();
+    customCategories.expense = (response.data || []).filter(category => category.type === 'expense');
+    customCategories.income = (response.data || []).filter(category => category.type === 'income');
+    categoriesLoaded = true;
+    setEntryType(dom.type.value || 'expense');
+  } catch (error) {
+    setStatus(error.message || '自定义类目暂时无法读取');
+  }
+}
+
+function handleCategoryChange() {
+  if (dom.category.value !== CATEGORY_CREATE_VALUE) {
+    categoryBeforeCreate = dom.category.value;
+    hideCategoryCreator();
+    return;
+  }
+  if (!categoryBeforeCreate || categoryBeforeCreate === CATEGORY_CREATE_VALUE) {
+    categoryBeforeCreate = CATEGORY_GROUPS[dom.type.value][0][0];
+  }
+  dom.category.value = categoryBeforeCreate;
+  dom.categoryCreator.hidden = false;
+  dom.newCategoryName.value = '';
+  dom.newCategoryName.focus();
+}
+
+function hideCategoryCreator() {
+  if (!dom?.categoryCreator) return;
+  dom.categoryCreator.hidden = true;
+  if (dom.newCategoryName) dom.newCategoryName.value = '';
+}
+
+async function createCategory() {
+  const name = dom.newCategoryName.value.trim();
+  if (!name) {
+    dom.formError.textContent = '请输入新类目名称';
+    dom.newCategoryName.focus();
+    return;
+  }
+  dom.formError.textContent = '';
+  dom.createCategory.disabled = true;
+  try {
+    const response = await api.createFenghuaCategory({ type: dom.type.value, name });
+    const category = response.data;
+    customCategories[dom.type.value].push(category);
+    setEntryType(dom.type.value);
+    dom.category.value = category.key;
+    categoryBeforeCreate = category.key;
+    hideCategoryCreator();
+    setStatus(`已添加类目“${category.name}”`);
+  } catch (error) {
+    dom.formError.textContent = error.details?.[0]?.message || error.message || '新建类目失败，请重试';
+  } finally {
+    dom.createCategory.disabled = false;
+  }
 }
 
 async function saveEntry(event) {
@@ -499,7 +575,9 @@ function updateMonthCaption() {
 
 function categoryMeta(type, value) {
   const match = CATEGORY_GROUPS[type]?.find(([id]) => id === value);
-  return match ? { label: match[1], mark: match[2] } : { label: '其他', mark: '其' };
+  if (match) return { label: match[1], mark: match[2] };
+  const custom = customCategories[type]?.find(category => category.key === value);
+  return custom ? { label: custom.name, mark: custom.name.slice(0, 1) } : { label: '其他', mark: '其' };
 }
 
 function currentMonth() {

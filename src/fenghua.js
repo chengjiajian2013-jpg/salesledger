@@ -68,6 +68,8 @@ async function createEntry(request, env) {
   const normalized = normalizeEntry(body);
   const errors = validateLedgerEntry(normalized);
   if (errors.length) return jsonError('VALIDATION_ERROR', '账目内容有误', 422, errors);
+  const categoryError = await validateCustomCategory(normalized, env);
+  if (categoryError) return categoryError;
 
   const result = await env.DB.prepare(`
     INSERT INTO fenghua_entries (type, amount, category, date, note)
@@ -87,6 +89,8 @@ async function updateEntry(request, env, id) {
   const merged = normalizeEntry({ ...existing, ...body });
   const errors = validateLedgerEntry(merged);
   if (errors.length) return jsonError('VALIDATION_ERROR', '账目内容有误', 422, errors);
+  const categoryError = await validateCustomCategory(merged, env);
+  if (categoryError) return categoryError;
 
   await env.DB.prepare(`
     UPDATE fenghua_entries
@@ -113,6 +117,17 @@ function normalizeEntry(value) {
     date: value.date,
     note: typeof value.note === 'string' ? value.note.trim() : '',
   };
+}
+
+async function validateCustomCategory(entry, env) {
+  if (!/^custom:\d+$/.test(String(entry.category || ''))) return null;
+  const category = await env.DB.prepare(`
+    SELECT id FROM fenghua_categories WHERE category_key = ? AND type = ?
+  `).bind(entry.category, entry.type).first();
+  if (category) return null;
+  return jsonError('VALIDATION_ERROR', '请选择与收支类型匹配的分类', 422, [
+    { field: 'category', code: 'INVALID_VALUE', message: '自定义分类不存在或类型不匹配' },
+  ]);
 }
 
 function formatEntry(row) {

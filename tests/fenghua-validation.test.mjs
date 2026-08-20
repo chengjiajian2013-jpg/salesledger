@@ -5,6 +5,7 @@ import {
   validateLedgerEntry,
   validateMonth,
   validateTodo,
+  validateCategory,
 } from '../src/fenghuaValidation.mjs';
 
 test('validateMonth accepts calendar months and rejects malformed values', () => {
@@ -13,7 +14,7 @@ test('validateMonth accepts calendar months and rejects malformed values', () =>
   assert.equal(validateMonth('August'), false);
 });
 
-test('ledger entries require a matching preset category and positive amount', () => {
+test('ledger entries require a matching category and positive amount', () => {
   const valid = validateLedgerEntry({
     type: 'expense',
     amount: 88.5,
@@ -31,6 +32,21 @@ test('ledger entries require a matching preset category and positive amount', ()
     note: '',
   });
   assert.deepEqual(invalid.map(error => error.field).sort(), ['amount', 'category']);
+
+  assert.deepEqual(validateLedgerEntry({
+    type: 'expense', amount: 18, category: 'custom:42', date: '2026-08-17',
+  }), []);
+  assert.equal(validateLedgerEntry({
+    type: 'expense', amount: 18, category: 'custom:not-an-id', date: '2026-08-17',
+  })[0].field, 'category');
+});
+
+test('custom category names are concise, safe, and non-empty', () => {
+  assert.deepEqual(validateCategory({ type: 'expense', name: '宠物' }), []);
+  assert.equal(validateCategory({ type: 'side', name: '旅行' })[0].field, 'type');
+  assert.equal(validateCategory({ type: 'expense', name: '   ' })[0].field, 'name');
+  assert.equal(validateCategory({ type: 'expense', name: '<img src=x>' })[0].field, 'name');
+  assert.equal(validateCategory({ type: 'expense', name: 'a'.repeat(33) })[0].field, 'name');
 });
 
 test('ledger amounts use yuan precision and reject sub-cent values', () => {

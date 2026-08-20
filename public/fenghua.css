@@ -715,6 +715,41 @@
   border-color: var(--fh-green);
 }
 
+.fenghua-category-creator {
+  display: grid;
+  gap: 6px;
+  margin-top: 7px;
+  color: var(--fh-muted);
+  font-size: 0.68rem;
+}
+
+.fenghua-category-creator__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+}
+
+.fenghua-category-creator__row input {
+  height: 38px;
+}
+
+.fenghua-category-creator__button {
+  min-width: 52px;
+  height: 38px;
+  border: 0;
+  border-radius: 6px;
+  padding: 0 11px;
+  background: var(--fh-green);
+  color: #fff;
+  font: 650 0.72rem/1 var(--font-sans);
+  cursor: pointer;
+}
+
+.fenghua-category-creator__button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
 .fenghua-add-todo {
   width: 44px;
   height: 44px;
