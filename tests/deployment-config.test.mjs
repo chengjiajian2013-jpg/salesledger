@@ -11,3 +11,9 @@ test('dev deployment binds the test access key from GitHub Actions secrets', asy
   assert.match(workflow, /secrets:\s*\|\s*ACCESS_KEY/);
   assert.match(workflow, /ACCESS_KEY:\s*\$\{\{\s*secrets\.TEST_ACCESS_KEY\s*\}\}/);
 });
+
+test('production deployment applies the Fenghua category migration before Worker deploy', async () => {
+  const workflow = await read('../.github/workflows/deploy-main.yml');
+  assert.match(workflow, /Apply production D1 migration/);
+  assert.match(workflow, /d1 execute salesledger-db --remote --file=\.\/migrations\/003_add_fenghua_categories\.sql/);
+});
