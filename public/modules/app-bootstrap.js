@@ -16,10 +16,11 @@ export function bootstrapAuthenticatedApp({ initCoreApp, initFenghuaWorkspace })
     started = true;
 
     const startCore = initCoreApp();
+    // Fenghua is an independent workspace and must not wait for Joeyzou API calls.
+    initFenghuaWorkspace();
     if (typeof startCore === 'function') {
       await startCore();
     }
-    initFenghuaWorkspace();
     return true;
   };
 

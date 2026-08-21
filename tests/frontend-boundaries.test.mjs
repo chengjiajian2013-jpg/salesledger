@@ -57,7 +57,7 @@ test('authenticated bootstrap invokes core and Fenghua once', async () => {
     });
     await returnedRun();
     await returnedRun();
-    assert.deepEqual(calls, ['core-init', 'core-start', 'fenghua']);
+    assert.deepEqual(calls, ['core-init', 'fenghua', 'core-start']);
   } finally {
     globalThis.document = originalDocument;
   }
