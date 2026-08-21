@@ -5,6 +5,7 @@ import { bootstrapAuthenticatedApp } from '../public/modules/app-bootstrap.js';
 import { createViewRouter } from '../public/modules/view-router.js';
 import { createTransactionController } from '../public/modules/transactions.js';
 import { buildMonthRanges, createMonthlyStatsController } from '../public/modules/monthly-stats.js';
+import { createIdempotentBinder } from '../public/modules/events.js';
 
 test('collectDom uses the supplied document-like root', () => {
   const calls = [];
@@ -170,4 +171,17 @@ test('monthly stats builds calendar-safe ranges and renders clickable months', (
   assert.match(dom.monthlyList.innerHTML, /2028年2月/);
   listeners[0]();
   assert.deepEqual(selected, ['2028-02']);
+});
+
+test('event binder registers once and can recover after a failed bind', () => {
+  let attempts = 0;
+  const binder = createIdempotentBinder(() => {
+    attempts += 1;
+    if (attempts === 1) throw new Error('bind failed');
+  });
+
+  assert.throws(() => binder(), /bind failed/);
+  assert.equal(binder(), true);
+  assert.equal(binder(), false);
+  assert.equal(attempts, 2);
 });

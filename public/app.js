@@ -13,6 +13,7 @@ import { bootstrapAuthenticatedApp } from './modules/app-bootstrap.js';
 import { createViewRouter } from './modules/view-router.js';
 import { createTransactionController } from './modules/transactions.js';
 import { createMonthlyStatsController } from './modules/monthly-stats.js';
+import { createIdempotentBinder } from './modules/events.js';
 
 if (location.pathname === '/fenghua' || location.pathname === '/fenghua/') {
   document.title = '风华记账';
@@ -142,6 +143,7 @@ let refreshAll;
 let handleSubmit;
 let monthlyStatsController;
 let loadMonthlyStats;
+let bindEventsOnce;
 
 // ═══ Toast ═══
 function showToast(msg, type = 'info') {
@@ -737,7 +739,7 @@ async function startApp() {
   const years = [currentYear, currentYear - 1, currentYear - 2];
   el.yearFilter.innerHTML = years.map(y => `<option value="${y}">${y}年</option>`).join('');
 
-  bindEvents();
+  bindEventsOnce();
   await refreshAll();
 }
 
@@ -2235,6 +2237,8 @@ function openTransactionModal(result, formInfo, goodsList) {
     capitalizeBrand,
   });
   ({ loadSummary, loadTransactions, refreshAll, handleSubmit } = transactionController);
+
+  bindEventsOnce = createIdempotentBinder(bindEvents);
 
   viewRouter = createViewRouter({
     dom: el,
