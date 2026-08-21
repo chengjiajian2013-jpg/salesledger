@@ -1,0 +1,80 @@
+// SalesLedger - DOM registry
+
+/**
+ * Collect the DOM nodes used by the Joeyzou workspace.
+ * The root is injectable so this module stays side-effect free and testable.
+ */
+export function collectDom(root) {
+  if (!root || typeof root.querySelector !== 'function') {
+    throw new TypeError('collectDom requires a document-like root');
+  }
+
+  const $ = selector => root.querySelector(selector);
+  return {
+    headerMonthlyTotal: $('#headerMonthlyTotal'),
+    headerSubtitle: $('#headerSubtitle'),
+    statsGrid: $('#statsGrid'),
+    sellerTabs: $('#sellerTabs'),
+    viewTabs: $('#viewTabs'),
+    transactionsView: $('#transactionsView'),
+    monthlyView: $('#monthlyView'),
+    aiView: $('#aiView'),
+    aiNewChat: $('#aiNewChat'),
+    aiChatList: $('#aiChatList'),
+    aiMessages: $('#aiMessages'),
+    aiInput: $('#aiInput'),
+    aiSend: $('#aiSend'),
+    aiRecordBar: $('#aiRecordBar'),
+    filterMonth: $('#filterMonth'),
+    prevMonth: $('#prevMonth'),
+    nextMonth: $('#nextMonth'),
+    filterChannel: $('#filterChannel'),
+    recordCount: $('#recordCount'),
+    txnList: $('#txnList'),
+    pagination: $('#pagination'),
+    prevPage: $('#prevPage'),
+    nextPage: $('#nextPage'),
+    pageInfo: $('#pageInfo'),
+    yearFilter: $('#yearFilter'),
+    monthlyList: $('#monthlyList'),
+    fab: $('#fab'),
+    modalOverlay: $('#modalOverlay'),
+    modalTitle: $('#modalTitle'),
+    txnForm: $('#txnForm'),
+    inputDate: $('#inputDate'),
+    inputProduct: $('#inputProduct'),
+    inputCost: $('#inputCost'),
+    inputPrice: $('#inputPrice'),
+    costRequired: $('#costRequired'),
+    priceRequired: $('#priceRequired'),
+    inputRate: $('#inputRate'),
+    rateField: $('#rateField'),
+    rateHint: $('#rateHint'),
+    rateMinus: $('#rateMinus'),
+    ratePlus: $('#ratePlus'),
+    inputSource: $('#inputSource'),
+    sourceField: $('#sourceField'),
+    inputBrand: $('#inputBrand'),
+    brandField: $('#brandField'),
+    datalistSource: $('#datalistSource'),
+    datalistBrand: $('#datalistBrand'),
+    profitPreview: $('#profitPreview'),
+    profitValue: $('#profitValue'),
+    profitFormula: $('#profitFormula'),
+    manualProfitField: $('#manualProfitField'),
+    inputProfit: $('#inputProfit'),
+    accountField: $('#accountField'),
+    inputAccount: $('#inputAccount'),
+    accountHint: $('#accountHint'),
+    inputNote: $('#inputNote'),
+    channelTabs: $('#channelTabs'),
+    submitBtn: $('#submitBtn'),
+    toastContainer: $('#toastContainer'),
+    parseToggle: $('#parseToggle'),
+    parseBody: $('#parseBody'),
+    parseInput: $('#parseInput'),
+    parseBtn: $('#parseBtn'),
+    parseClear: $('#parseClear'),
+    parseWarning: $('#parseWarning'),
+  };
+}

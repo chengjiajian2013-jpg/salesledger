@@ -8,6 +8,8 @@ import { isAuthenticated, login } from './modules/auth.js';
 import { callAI } from './modules/ai.js';
 import { getAllChats, createChat, getChat, addMessage, deleteChat, getChatMessages, updateChat, saveFormData, getFormData } from './modules/aiStorageApi.js';
 import { initFenghuaWorkspace } from './modules/fenghua.js';
+import { collectDom } from './modules/dom.js';
+import { bootstrapAuthenticatedApp } from './modules/app-bootstrap.js';
 
 if (location.pathname === '/fenghua' || location.pathname === '/fenghua/') {
   document.title = '风华记账';
@@ -114,61 +116,17 @@ if (!isAuthenticated()) {
   // 已登录，显示应用主界面
   loginPage.style.display = 'none';
   appContainer.style.display = 'flex';
-  initApp();
-  initFenghuaWorkspace();
+  bootstrapAuthenticatedApp({
+    initCoreApp: initApp,
+    initFenghuaWorkspace,
+  });
 }
 
 // ═══ 应用初始化 ═══
 function initApp() {
 
 // ═══ DOM ═══
-const $ = (s) => document.querySelector(s);
-const el = {
-  headerMonthlyTotal: $('#headerMonthlyTotal'),
-  statsGrid: $('#statsGrid'),
-  sellerTabs: $('#sellerTabs'),
-  viewTabs: $('#viewTabs'),
-  transactionsView: $('#transactionsView'),
-  monthlyView: $('#monthlyView'),
-  aiView: $('#aiView'),
-  aiNewChat: $('#aiNewChat'),
-  aiChatList: $('#aiChatList'),
-  aiMessages: $('#aiMessages'),
-  aiInput: $('#aiInput'),
-  aiSend: $('#aiSend'),
-  aiRecordBar: $('#aiRecordBar'),
-  filterMonth: $('#filterMonth'),
-  prevMonth: $('#prevMonth'),
-  nextMonth: $('#nextMonth'),
-  filterChannel: $('#filterChannel'),
-  recordCount: $('#recordCount'),
-  txnList: $('#txnList'),
-  pagination: $('#pagination'), prevPage: $('#prevPage'), nextPage: $('#nextPage'), pageInfo: $('#pageInfo'),
-  yearFilter: $('#yearFilter'),
-  monthlyList: $('#monthlyList'),
-  fab: $('#fab'),
-  modalOverlay: $('#modalOverlay'), modalTitle: $('#modalTitle'),
-  txnForm: $('#txnForm'),
-  inputDate: $('#inputDate'), inputProduct: $('#inputProduct'),
-  inputCost: $('#inputCost'), inputPrice: $('#inputPrice'),
-  costRequired: $('#costRequired'), priceRequired: $('#priceRequired'),
-  inputRate: $('#inputRate'), rateField: $('#rateField'), rateHint: $('#rateHint'),
-  rateMinus: $('#rateMinus'), ratePlus: $('#ratePlus'),
-  inputSource: $('#inputSource'), sourceField: $('#sourceField'),
-  inputBrand: $('#inputBrand'), brandField: $('#brandField'),
-  datalistSource: $('#datalistSource'), datalistBrand: $('#datalistBrand'),
-  profitPreview: $('#profitPreview'), profitValue: $('#profitValue'), profitFormula: $('#profitFormula'),
-  manualProfitField: $('#manualProfitField'), inputProfit: $('#inputProfit'),
-  accountField: $('#accountField'), inputAccount: $('#inputAccount'), accountHint: $('#accountHint'),
-  inputNote: $('#inputNote'),
-  channelTabs: $('#channelTabs'),
-  submitBtn: $('#submitBtn'),
-  toastContainer: $('#toastContainer'),
-  // 智能解析
-  parseToggle: $('#parseToggle'), parseBody: $('#parseBody'),
-  parseInput: $('#parseInput'), parseBtn: $('#parseBtn'), parseClear: $('#parseClear'),
-  parseWarning: $('#parseWarning'),
-};
+const el = collectDom(document);
 
 let currentSeller = 'company';
 let selectedChannel = 'quota';
@@ -989,8 +947,8 @@ async function startApp() {
   await refreshAll();
 }
 
-// 启动应用
-document.addEventListener('DOMContentLoaded', startApp);
+// 返回启动回调，由 app-bootstrap 统一管理 DOMContentLoaded 和幂等性。
+// 这里不再注册全局事件，避免认证流程和直接访问入口重复初始化。
 
 // ═══ AI助手功能 ═══
 let currentChatId = null;
@@ -2454,4 +2412,5 @@ function openTransactionModal(result, formInfo, goodsList) {
   showToast('已自动填充交易数据，请确认后保存', 'info');
 }
 
+  return startApp;
 } // end of initApp()
