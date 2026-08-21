@@ -12,6 +12,7 @@ import { collectDom } from './modules/dom.js';
 import { bootstrapAuthenticatedApp } from './modules/app-bootstrap.js';
 import { createViewRouter } from './modules/view-router.js';
 import { createTransactionController } from './modules/transactions.js';
+import { createMonthlyStatsController } from './modules/monthly-stats.js';
 
 if (location.pathname === '/fenghua' || location.pathname === '/fenghua/') {
   document.title = '风华记账';
@@ -139,6 +140,8 @@ let loadSummary;
 let loadTransactions;
 let refreshAll;
 let handleSubmit;
+let monthlyStatsController;
+let loadMonthlyStats;
 
 // ═══ Toast ═══
 function showToast(msg, type = 'info') {
@@ -518,97 +521,6 @@ async function updateHeaderMonthlyTotal() {
       valueSpan.textContent = '¥0';
     }
   }
-}
-
-// ═══ 月度统计 ═══
-async function loadMonthlyStats() {
-  const year = el.yearFilter.value || new Date().getFullYear();
-  const months = [];
-  for (let m = 1; m <= 12; m++) {
-    const month = String(m).padStart(2, '0');
-    const start = `${year}-${month}-01`;
-    const lastDay = new Date(year, m, 0).getDate();
-    const end = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
-    months.push({ year, month, start, end });
-  }
-  
-  try {
-    // 并行请求每月的公司和个人数据
-    const results = await Promise.all(
-      months.map(async (m) => {
-        try {
-          const [companyRes, personalRes] = await Promise.all([
-            api.getSummary({ startDate: m.start, endDate: m.end, seller: 'company' }),
-            api.getSummary({ startDate: m.start, endDate: m.end, seller: 'personal' }),
-          ]);
-          const company = companyRes.data || companyRes;
-          const personal = personalRes.data || personalRes;
-          return {
-            ...m,
-            companyProfit: company.totalProfit || 0,
-            personalProfit: personal.totalProfit || 0,
-            companyCount: company.transactionCount || 0,
-            personalCount: personal.transactionCount || 0,
-          };
-        } catch {
-          return { ...m, companyProfit: 0, personalProfit: 0, companyCount: 0, personalCount: 0 };
-        }
-      })
-    );
-    renderMonthlyStats(results.reverse()); // 最新月份在上
-  } catch (e) {
-    showToast('月度统计加载失败', 'error');
-  }
-}
-
-function renderMonthlyStats(months) {
-  if (!months || months.length === 0) {
-    el.monthlyList.innerHTML = '<div class="empty-state"><div class="empty-state__text">暂无数据</div></div>';
-    return;
-  }
-
-  const BASE_SALARY = 8000; // 公司底薪
-
-  el.monthlyList.innerHTML = months.map(m => {
-    const companyTotal = m.companyProfit + BASE_SALARY; // 公司收入 = 利润 + 底薪
-    const totalIncome = companyTotal + m.personalProfit; // 总收入 = 公司总收入 + 个人利润
-    const totalCount = m.companyCount + m.personalCount;
-    if (totalCount === 0) return ''; // 跳过没有交易的月份
-
-    return `
-      <div class="monthly-card" data-year="${m.year}" data-month="${m.month}">
-        <div class="monthly-card__header">
-          <div class="monthly-card__month">${m.year}年${parseInt(m.month)}月</div>
-          <div class="monthly-card__count">${totalCount} 笔</div>
-        </div>
-        <div class="monthly-card__stats">
-          <div class="monthly-card__stat">
-            <div class="monthly-card__stat-label">公司收入</div>
-            <div class="monthly-card__stat-value">${formatCurrency(companyTotal)}</div>
-            <div class="monthly-card__stat-detail">底薪¥8,000 + 利润${formatCurrency(m.companyProfit)}</div>
-          </div>
-          <div class="monthly-card__stat">
-            <div class="monthly-card__stat-label">个人收入</div>
-            <div class="monthly-card__stat-value">${formatCurrency(m.personalProfit)}</div>
-          </div>
-          <div class="monthly-card__stat monthly-card__stat--profit">
-            <div class="monthly-card__stat-label">总收入</div>
-            <div class="monthly-card__stat-value">${formatCurrency(totalIncome)}</div>
-          </div>
-        </div>
-      </div>
-    `;
-  }).join('');
-  
-  // 点击月度卡片跳转到交易明细
-  el.monthlyList.querySelectorAll('.monthly-card').forEach(card => {
-    card.addEventListener('click', () => {
-      const year = card.dataset.year;
-      const month = card.dataset.month;
-      setMonth(`${year}-${month}`);
-      switchView('transactions');
-    });
-  });
 }
 
 // ═══ 渲染 ═══
@@ -2294,12 +2206,17 @@ function openTransactionModal(result, formInfo, goodsList) {
   showToast('已自动填充交易数据，请确认后保存', 'info');
 }
 
-  viewRouter = createViewRouter({
+  monthlyStatsController = createMonthlyStatsController({
+    api,
     dom: el,
-    onTransactions: refreshAll,
-    onMonthly: loadMonthlyStats,
-    onAI: loadAIView,
+    formatCurrency,
+    showToast,
+    onMonthSelected: yearMonth => {
+      setMonth(yearMonth);
+      switchView('transactions');
+    },
   });
+  ({ loadMonthlyStats } = monthlyStatsController);
 
   transactionController = createTransactionController({
     api,
@@ -2318,6 +2235,13 @@ function openTransactionModal(result, formInfo, goodsList) {
     capitalizeBrand,
   });
   ({ loadSummary, loadTransactions, refreshAll, handleSubmit } = transactionController);
+
+  viewRouter = createViewRouter({
+    dom: el,
+    onTransactions: () => refreshAll(),
+    onMonthly: () => loadMonthlyStats(),
+    onAI: () => loadAIView(),
+  });
 
   return startApp;
 } // end of initApp()

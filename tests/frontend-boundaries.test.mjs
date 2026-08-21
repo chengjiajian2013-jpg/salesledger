@@ -4,6 +4,7 @@ import { collectDom } from '../public/modules/dom.js';
 import { bootstrapAuthenticatedApp } from '../public/modules/app-bootstrap.js';
 import { createViewRouter } from '../public/modules/view-router.js';
 import { createTransactionController } from '../public/modules/transactions.js';
+import { buildMonthRanges, createMonthlyStatsController } from '../public/modules/monthly-stats.js';
 
 test('collectDom uses the supplied document-like root', () => {
   const calls = [];
@@ -134,4 +135,39 @@ test('transaction submission preserves a user note in the API body', async () =>
   assert.equal(calls[0].note, '这是备注');
   assert.equal(calls[0].brand, 'ACME');
   assert.equal(dom.submitBtn.disabled, false);
+});
+
+test('monthly stats builds calendar-safe ranges and renders clickable months', () => {
+  const ranges = buildMonthRanges(2028);
+  assert.equal(ranges.length, 12);
+  assert.deepEqual(ranges[1], {
+    year: 2028,
+    month: '02',
+    start: '2028-02-01',
+    end: '2028-02-29',
+  });
+
+  const listeners = [];
+  const dom = {
+    yearFilter: { value: '2028' },
+    monthlyList: {
+      innerHTML: '',
+      querySelectorAll() {
+        return [{ dataset: { year: '2028', month: '02' }, addEventListener: (_type, fn) => listeners.push(fn) }];
+      },
+    },
+  };
+  const selected = [];
+  const controller = createMonthlyStatsController({
+    api: { getSummary: async () => ({ data: { totalProfit: 0, transactionCount: 0 } }) },
+    dom,
+    formatCurrency: value => `¥${value}`,
+    showToast: () => {},
+    onMonthSelected: month => selected.push(month),
+  });
+
+  controller.renderMonthlyStats([{ year: 2028, month: '02', companyProfit: 100, personalProfit: 50, companyCount: 1, personalCount: 1 }]);
+  assert.match(dom.monthlyList.innerHTML, /2028年2月/);
+  listeners[0]();
+  assert.deepEqual(selected, ['2028-02']);
 });
