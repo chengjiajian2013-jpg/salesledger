@@ -6,6 +6,15 @@ import { createViewRouter } from '../public/modules/view-router.js';
 import { createTransactionController } from '../public/modules/transactions.js';
 import { buildMonthRanges, createMonthlyStatsController } from '../public/modules/monthly-stats.js';
 import { createIdempotentBinder } from '../public/modules/events.js';
+import {
+  extractAIData,
+  removeAIDataTag,
+  parseAIResponse,
+  parseTransactionTypeFromAI,
+  parseGoodsFromAIResponse,
+  parseFormFromQuestion,
+  parseGoodsFromQuestion,
+} from '../public/modules/ai-parse.js';
 
 test('collectDom uses the supplied document-like root', () => {
   const calls = [];
@@ -184,4 +193,34 @@ test('event binder registers once and can recover after a failed bind', () => {
   assert.equal(binder(), true);
   assert.equal(binder(), false);
   assert.equal(attempts, 2);
+});
+
+test('AI parsers convert structured responses into transaction drafts', () => {
+  const response = '<ai-data>{"customerPay":120,"toCompany":90,"profit":30,"quota":100,"transactionType":"personal","goods":[{"name":"卡包","amount":120}]}</ai-data>已整理';
+  assert.deepEqual(extractAIData(response), {
+    customerPay: 120,
+    toCompany: 90,
+    profit: 30,
+    quota: 100,
+    transactionType: 'personal',
+    goods: [{ name: '卡包', amount: 120 }],
+  });
+  assert.equal(removeAIDataTag(response), '已整理');
+  assert.deepEqual(parseAIResponse(response), { customerPay: 120, toCompany: 90, profit: 30, excess: 0, quota: 100 });
+  assert.equal(parseTransactionTypeFromAI(response), 'personal');
+  assert.deepEqual(parseGoodsFromAIResponse(response), [{ name: '卡包', amount: 120 }]);
+});
+
+test('AI parsers retain legacy markdown and question fallbacks', () => {
+  const response = '**交易类型：**公司交易\n\n**货物明细：**\n- 黑金：4,500元\n- 合计：4,500元\n\n给公司的钱：4,000元\n额度：4,500元';
+  assert.deepEqual(parseAIResponse(response), { customerPay: 0, toCompany: 4000, profit: 0, excess: 0, quota: 4500 });
+  assert.equal(parseTransactionTypeFromAI(response), 'company');
+  assert.deepEqual(parseGoodsFromAIResponse(response), [{ name: '黑金', amount: 4500 }]);
+  assert.deepEqual(parseFormFromQuestion('个人交易：额度1,000元，卖9折，成本8折'), {
+    type: 'personal', quota: 1000, cost: 0.08, price: 0.09,
+  });
+  assert.deepEqual(parseGoodsFromQuestion('实际货物：卡包：120元、徽章：30元'), [
+    { name: '卡包', amount: 120 },
+    { name: '徽章', amount: 30 },
+  ]);
 });
