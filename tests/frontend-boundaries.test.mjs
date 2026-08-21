@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { collectDom } from '../public/modules/dom.js';
 import { bootstrapAuthenticatedApp } from '../public/modules/app-bootstrap.js';
+import { createViewRouter } from '../public/modules/view-router.js';
 
 test('collectDom uses the supplied document-like root', () => {
   const calls = [];
@@ -48,4 +49,44 @@ test('authenticated bootstrap invokes core and Fenghua once', async () => {
   } finally {
     globalThis.document = originalDocument;
   }
+});
+
+test('view router toggles workspace visibility and delegates loading', () => {
+  const buttons = ['transactions', 'monthly', 'ai'].map(view => ({
+    dataset: { view },
+    classList: { values: [], toggle(name, active) { this.values.push([name, active]); } },
+  }));
+  const makePanel = () => ({ style: { display: 'initial' } });
+  const dom = {
+    viewTabs: { querySelectorAll: () => buttons },
+    sellerTabs: makePanel(),
+    statsGrid: makePanel(),
+    transactionsView: makePanel(),
+    monthlyView: makePanel(),
+    aiView: makePanel(),
+    fab: makePanel(),
+  };
+  const loaded = [];
+  const router = createViewRouter({
+    dom,
+    onTransactions: () => loaded.push('transactions'),
+    onMonthly: () => loaded.push('monthly'),
+    onAI: () => loaded.push('ai'),
+  });
+
+  assert.equal(router.switchView('monthly'), true);
+  assert.equal(router.getCurrentView(), 'monthly');
+  assert.equal(dom.sellerTabs.style.display, 'none');
+  assert.equal(dom.transactionsView.style.display, 'none');
+  assert.equal(dom.monthlyView.style.display, 'block');
+  assert.equal(dom.aiView.style.display, 'none');
+  assert.equal(dom.fab.style.display, 'flex');
+  assert.deepEqual(loaded, ['monthly']);
+
+  assert.equal(router.switchView('ai'), true);
+  assert.equal(dom.aiView.style.display, 'block');
+  assert.equal(dom.fab.style.display, 'none');
+  assert.deepEqual(loaded, ['monthly', 'ai']);
+  assert.equal(router.switchView('unknown'), false);
+  assert.equal(router.getCurrentView(), 'ai');
 });

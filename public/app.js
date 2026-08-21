@@ -10,6 +10,7 @@ import { getAllChats, createChat, getChat, addMessage, deleteChat, getChatMessag
 import { initFenghuaWorkspace } from './modules/fenghua.js';
 import { collectDom } from './modules/dom.js';
 import { bootstrapAuthenticatedApp } from './modules/app-bootstrap.js';
+import { createViewRouter } from './modules/view-router.js';
 
 if (location.pathname === '/fenghua' || location.pathname === '/fenghua/') {
   document.title = '风华记账';
@@ -131,7 +132,7 @@ const el = collectDom(document);
 let currentSeller = 'company';
 let selectedChannel = 'quota';
 let editingId = null;  // 编辑模式追踪：null=创建，数字=编辑
-let currentView = 'transactions';  // transactions | monthly
+let viewRouter;
 
 // ═══ Toast ═══
 function showToast(msg, type = 'info') {
@@ -254,39 +255,7 @@ function updateSellerIndicator() {
 
 // ═══ 视图切换 ═══
 function switchView(view) {
-  currentView = view;
-  el.viewTabs.querySelectorAll('.view-tab').forEach(btn => {
-    btn.classList.toggle('view-tab--active', btn.dataset.view === view);
-  });
-
-  if (view === 'transactions') {
-    // 交易明细：显示 seller-tabs 和统计卡片
-    el.sellerTabs.style.display = 'flex';
-    el.statsGrid.style.display = 'grid';
-    el.transactionsView.style.display = 'block';
-    el.monthlyView.style.display = 'none';
-    el.aiView.style.display = 'none';
-    el.fab.style.display = 'flex';  // 显示FAB按钮
-    refreshAll();
-  } else if (view === 'monthly') {
-    // 月度统计：隐藏 seller-tabs，只显示月均+年总数
-    el.sellerTabs.style.display = 'none';
-    el.statsGrid.style.display = 'none';
-    el.transactionsView.style.display = 'none';
-    el.monthlyView.style.display = 'block';
-    el.aiView.style.display = 'none';
-    el.fab.style.display = 'flex';  // 显示FAB按钮
-    loadMonthlyStats();
-  } else if (view === 'ai') {
-    // AI助手：隐藏 seller-tabs、统计和FAB按钮
-    el.sellerTabs.style.display = 'none';
-    el.statsGrid.style.display = 'none';
-    el.transactionsView.style.display = 'none';
-    el.monthlyView.style.display = 'none';
-    el.aiView.style.display = 'block';
-    el.fab.style.display = 'none';  // 隐藏FAB按钮
-    loadAIView();
-  }
+  return viewRouter.switchView(view);
 }
 
 // ═══ 月份导航 ═══
@@ -2411,6 +2380,13 @@ function openTransactionModal(result, formInfo, goodsList) {
 
   showToast('已自动填充交易数据，请确认后保存', 'info');
 }
+
+  viewRouter = createViewRouter({
+    dom: el,
+    onTransactions: refreshAll,
+    onMonthly: loadMonthlyStats,
+    onAI: loadAIView,
+  });
 
   return startApp;
 } // end of initApp()
