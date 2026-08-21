@@ -11,6 +11,7 @@ import { initFenghuaWorkspace } from './modules/fenghua.js';
 import { collectDom } from './modules/dom.js';
 import { bootstrapAuthenticatedApp } from './modules/app-bootstrap.js';
 import { createViewRouter } from './modules/view-router.js';
+import { createTransactionController } from './modules/transactions.js';
 
 if (location.pathname === '/fenghua' || location.pathname === '/fenghua/') {
   document.title = '风华记账';
@@ -133,6 +134,11 @@ let currentSeller = 'company';
 let selectedChannel = 'quota';
 let editingId = null;  // 编辑模式追踪：null=创建，数字=编辑
 let viewRouter;
+let transactionController;
+let loadSummary;
+let loadTransactions;
+let refreshAll;
+let handleSubmit;
 
 // ═══ Toast ═══
 function showToast(msg, type = 'info') {
@@ -465,21 +471,6 @@ function applyParseResult(d) {
   }
 }
 
-// ═══ 数据加载 ═══
-async function loadSummary() {
-  try {
-    const { startDate, endDate, seller } = state.filters;
-    const res = await api.getSummary({ startDate, endDate, seller });
-    const data = res.data || res;
-    setState({ summary: data });
-    renderSummary(data);
-    updateHeaderMonthlyTotal(); // 更新header的当月总计
-  } catch (e) {
-    console.error('[Summary]', e);
-    showToast('统计数据加载失败', 'error');
-  }
-}
-
 // 更新header的当月总计（公司+个人）
 async function updateHeaderMonthlyTotal() {
   if (!el.headerMonthlyTotal) return;
@@ -527,27 +518,6 @@ async function updateHeaderMonthlyTotal() {
       valueSpan.textContent = '¥0';
     }
   }
-}
-
-async function loadTransactions() {
-  setState({ ui: { loading: true } });
-  try {
-    const f = state.filters;
-    const res = await api.listTransactions(f);
-    const data = res.data || res;
-    const pagination = (res.meta && res.meta.pagination) || (data.meta && data.meta.pagination) || {};
-    setState({ transactions: data, meta: { pagination } });
-    renderList(data, pagination);
-  } catch (e) {
-    showToast(e.message || '加载失败', 'error');
-  } finally {
-    setState({ ui: { loading: false } });
-  }
-}
-
-async function refreshAll() {
-  await Promise.all([loadSummary(), loadTransactions()]);
-  updateHeaderMonthlyTotal(); // 同时更新header的当月总计
 }
 
 // ═══ 月度统计 ═══
@@ -732,63 +702,6 @@ function renderList(data, pg) {
     el.nextPage.disabled = pg.page >= pg.totalPages;
   } else {
     el.pagination.style.display = 'none';
-  }
-}
-
-// ═══ 提交 ═══
-async function handleSubmit(e) {
-  e.preventDefault();
-  const channel = selectedChannel;
-  const isOther = channel === 'other';
-
-  let profit;
-  if (isOther) {
-    profit = parseFloat(el.inputProfit.value) || 0;
-    if (profit <= 0) { showToast('请填写利润', 'error'); return; }
-  } else {
-    const price = parseFloat(el.inputPrice.value) || 0;
-    const cost = parseFloat(el.inputCost.value) || 0;
-    const rate = (parseFloat(el.inputRate.value) || 0) / 100;
-    // 按渠道校验必填
-    if (price <= 0) { showToast('请填写售价', 'error'); return; }
-    if ((channel === 'direct' || channel === 'recovery') && cost <= 0) { showToast('请填写成本', 'error'); return; }
-    profit = Math.round((price - cost) * rate * 100) / 100;
-  }
-
-  const body = {
-    seller: currentSeller,
-    source: el.inputSource.value.trim(),
-    brand: capitalizeBrand(el.inputBrand.value),
-    date: el.inputDate.value,
-    product: el.inputProduct.value.trim(),
-    channel,
-    cost: parseFloat(el.inputCost.value) || 0,
-    price: parseFloat(el.inputPrice.value) || 0,
-    commission_rate: isOther ? 0 : (parseFloat(el.inputRate.value) || 0) / 100,
-    profit,
-    account: el.inputAccount.value.trim(),
-    note: el.inputNote.value.trim(),
-  };
-
-  if (!body.date || !body.product) { showToast('请填写日期和商品名', 'error'); return; }
-
-  el.submitBtn.disabled = true;
-  try {
-    if (editingId) {
-      // 编辑模式：更新现有记录
-      await api.updateTransaction(editingId, body);
-      showToast('已更新 ✓');
-    } else {
-      // 创建模式：创建新记录
-      await api.createTransaction(body);
-      showToast('已记录 ✓');
-    }
-    closeModal();
-    refreshAll();
-  } catch (err) {
-    showToast(err.message || '保存失败', 'error');
-  } finally {
-    el.submitBtn.disabled = false;
   }
 }
 
@@ -2387,6 +2300,24 @@ function openTransactionModal(result, formInfo, goodsList) {
     onMonthly: loadMonthlyStats,
     onAI: loadAIView,
   });
+
+  transactionController = createTransactionController({
+    api,
+    state,
+    setState,
+    dom: el,
+    renderSummary,
+    renderList,
+    showToast,
+    closeModal,
+    refreshHeaderTotal: updateHeaderMonthlyTotal,
+    getSelectedChannel: () => selectedChannel,
+    getCurrentSeller: () => currentSeller,
+    getEditingId: () => editingId,
+    onRefresh: () => transactionController.refreshAll(),
+    capitalizeBrand,
+  });
+  ({ loadSummary, loadTransactions, refreshAll, handleSubmit } = transactionController);
 
   return startApp;
 } // end of initApp()

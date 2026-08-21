@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { collectDom } from '../public/modules/dom.js';
 import { bootstrapAuthenticatedApp } from '../public/modules/app-bootstrap.js';
 import { createViewRouter } from '../public/modules/view-router.js';
+import { createTransactionController } from '../public/modules/transactions.js';
 
 test('collectDom uses the supplied document-like root', () => {
   const calls = [];
@@ -89,4 +90,48 @@ test('view router toggles workspace visibility and delegates loading', () => {
   assert.deepEqual(loaded, ['monthly', 'ai']);
   assert.equal(router.switchView('unknown'), false);
   assert.equal(router.getCurrentView(), 'ai');
+});
+
+test('transaction submission preserves a user note in the API body', async () => {
+  const calls = [];
+  const state = { filters: { startDate: '2026-08-01', endDate: '2026-08-31', seller: 'company' } };
+  const dom = {
+    inputProfit: { value: '' },
+    inputPrice: { value: '100' },
+    inputCost: { value: '0' },
+    inputRate: { value: '10' },
+    inputSource: { value: '苏苏' },
+    inputBrand: { value: 'acme' },
+    inputDate: { value: '2026-08-22' },
+    inputProduct: { value: '测试商品' },
+    inputAccount: { value: '银行卡' },
+    inputNote: { value: '这是备注' },
+    submitBtn: { disabled: false },
+  };
+  const controller = createTransactionController({
+    api: {
+      async createTransaction(body) { calls.push(body); },
+      async getSummary() { return { data: {} }; },
+      async listTransactions() { return { data: [], meta: { pagination: {} } }; },
+    },
+    state,
+    setState: () => {},
+    dom,
+    renderSummary: () => {},
+    renderList: () => {},
+    showToast: () => {},
+    closeModal: () => {},
+    refreshHeaderTotal: async () => {},
+    getSelectedChannel: () => 'quota',
+    getCurrentSeller: () => 'company',
+    getEditingId: () => null,
+    onRefresh: async () => {},
+    capitalizeBrand: value => value.toUpperCase(),
+  });
+
+  await controller.handleSubmit({ preventDefault() {} });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].note, '这是备注');
+  assert.equal(calls[0].brand, 'ACME');
+  assert.equal(dom.submitBtn.disabled, false);
 });
