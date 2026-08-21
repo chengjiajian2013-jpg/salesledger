@@ -16,26 +16,26 @@ Reduce the coupling in `public/app.js` without changing the existing transaction
 
 ### Phase 1: Foundation
 
-- [ ] Extract DOM lookup into `dom.js` and cover it with a root-injection test.
-- [ ] Replace the nested `DOMContentLoaded` registration with a single authenticated bootstrap.
-- [ ] Extract view switching behind a callback-based router.
+- [x] Extract DOM lookup into `dom.js` and cover it with a root-injection test.
+- [x] Replace the nested `DOMContentLoaded` registration with a single authenticated bootstrap.
+- [x] Extract view switching behind a callback-based router.
 
 ### Phase 2: Core Boundaries
 
-- [ ] Move transaction list/modal helpers behind a transaction module facade.
-- [ ] Move monthly statistics loading/rendering behind a monthly-stats facade.
-- [ ] Move event binding behind one idempotent events facade.
+- [x] Move transaction data loading/submission behind a transaction module facade.
+- [x] Move monthly statistics loading/rendering behind a monthly-stats facade.
+- [x] Protect event binding behind one idempotent events facade.
 
 ### Phase 3: AI Boundary
 
-- [ ] Separate pure AI response parsing from DOM mutations.
-- [ ] Keep `openTransactionModal` owned by the transaction boundary and pass it a draft.
+- [x] Separate pure AI response parsing from DOM mutations.
+- [x] Keep `openTransactionModal` owned by the transaction boundary and pass it a draft.
 
 ## Verification
 
 - Run `npm test` after every slice.
 - Run static surface checks for the main and Fenghua entry points.
-- Perform a browser smoke check for login, transaction create/edit, monthly view, AI view, and `/fenghua` direct entry after the final slice.
+- Perform a browser smoke check for login, transaction create/edit, monthly view, AI view, and `/fenghua` direct entry after the final slice. (Not run: Chrome DevTools MCP is unavailable in this environment.)
 
 ## Risks and Mitigations
 
