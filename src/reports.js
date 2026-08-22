@@ -70,7 +70,7 @@ export function buildCompanyFooter(totals) {
   return {
     labels: COMPANY_HEADERS.slice(8),
     values,
-    totalLabel: '提成合计：ijk的合',
+    totalLabel: `提成合计：${values.reduce((sum, value) => sum + value, 0)}`,
   };
 }
 
