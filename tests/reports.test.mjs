@@ -28,7 +28,7 @@ test('company footer keeps the commission total label and sums each commission c
 
   assert.deepEqual(footer.labels, ['换货提成 2%', '直款提成（利润 10%）', '直客回收 40%']);
   assert.deepEqual(footer.values, [1200, 300, 500]);
-  assert.equal(footer.totalLabel, '提成合计');
+  assert.equal(footer.totalLabel, '提成合计：ijk的合');
 });
 
 test('personal report keeps the simple nine-column shape', () => {
@@ -57,9 +57,11 @@ test('company workbook contains UTF-8 labels and per-column commission totals', 
   const sheet = strFromU8(files['xl/worksheets/sheet1.xml']);
 
   assert.match(sheet, /售出日期/);
-  assert.doesNotMatch(sheet, /mergeCell ref="I5:K5"/);
-  assert.match(sheet, /提成合计/);
-  assert.match(sheet, /<c r="I5"[^>]*><v>40<\/v>/);
+  assert.doesNotMatch(sheet, /<row r="4">.*换货提成 2%/);
+  assert.doesNotMatch(sheet, /<row r="4">.*直款提成（利润 10%）/);
+  assert.doesNotMatch(sheet, /<row r="4">.*直客回收 40%/);
+  assert.match(sheet, /<c r="H4"[^>]*>.*提成合计：ijk的合/);
+  assert.match(sheet, /<c r="I4"[^>]*><v>40<\/v>/);
   assert.doesNotMatch(sheet, /2026-08-01.*1000.*2000/);
 });
 

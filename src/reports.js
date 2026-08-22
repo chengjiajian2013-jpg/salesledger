@@ -70,7 +70,7 @@ export function buildCompanyFooter(totals) {
   return {
     labels: COMPANY_HEADERS.slice(8),
     values,
-    totalLabel: '提成合计',
+    totalLabel: '提成合计：ijk的合',
   };
 }
 
@@ -92,7 +92,6 @@ export function buildCompanyWorkbook(rows, month) {
     ['公司账本 - ' + month.replace('-', '年') + '月'],
     COMPANY_HEADERS,
     ...data.map(row => [row.date, row.brand, row.product, row.cost, row.quotaAmount, row.price, row.channel, row.account, row.quotaCommission, row.directCommission, row.recoveryCommission]),
-    ['', '', '', '', '', '', '', '', ...footer.labels],
     ['', '', '', '', '', '', '', footer.totalLabel, ...footer.values],
   ];
   return createXlsx('公司账本', body, {
@@ -100,7 +99,6 @@ export function buildCompanyWorkbook(rows, month) {
     widths: [14, 16, 24, 12, 18, 12, 12, 28, 16, 20, 16],
     titleRow: 1,
     headerRow: 2,
-    footerHeaderRow: body.length - 1,
     footerTotalRow: body.length,
     numberColumns: [4, 5, 6, 9, 10, 11],
   });
