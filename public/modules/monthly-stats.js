@@ -24,23 +24,37 @@ export function createMonthlyStatsController({ api, dom, formatCurrency, showToa
 
   function bindReportExport() {
     if (!dom.exportReports || dom.exportReports.dataset?.bound === 'true') return;
-    if (dom.reportMonth && !dom.reportMonth.value) dom.reportMonth.value = previousMonth();
     dom.exportReports.dataset.bound = 'true';
-    dom.exportReports.addEventListener('click', async () => {
+    dom.exportReports.addEventListener('click', () => {
+      if (dom.reportMonth && !dom.reportMonth.value) dom.reportMonth.value = previousMonth();
+      if (dom.reportLedger) dom.reportLedger.value = 'company';
+      dom.reportModalOverlay?.classList.add('modal-overlay--open');
+      dom.reportModalOverlay?.setAttribute('aria-hidden', 'false');
+    });
+    dom.reportCancel?.addEventListener('click', closeReportModal);
+    dom.reportModalOverlay?.addEventListener('click', event => {
+      if (event.target === dom.reportModalOverlay) closeReportModal();
+    });
+    dom.reportDownload?.addEventListener('click', async () => {
       const month = dom.reportMonth?.value || previousMonth();
-      dom.exportReports.disabled = true;
+      const ledger = dom.reportLedger?.value || 'company';
+      dom.reportDownload.disabled = true;
       try {
-        await api.downloadReport({ month, ledger: 'company' });
-        await new Promise(resolve => setTimeout(resolve, 250));
-        await api.downloadReport({ month, ledger: 'personal' });
-        showToast('公司和个人报表已导出');
+        await api.downloadReport({ month, ledger });
+        closeReportModal();
+        showToast(`${ledger === 'company' ? '公司' : '个人'}报表已导出`);
       } catch (error) {
         console.error('[ReportExport]', error);
         showToast(error.message || '报表导出失败', 'error');
       } finally {
-        dom.exportReports.disabled = false;
+        dom.reportDownload.disabled = false;
       }
     });
+  }
+
+  function closeReportModal() {
+    dom.reportModalOverlay?.classList.remove('modal-overlay--open');
+    dom.reportModalOverlay?.setAttribute('aria-hidden', 'true');
   }
 
   async function loadMonthlyStats() {

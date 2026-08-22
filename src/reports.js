@@ -70,8 +70,7 @@ export function buildCompanyFooter(totals) {
   return {
     labels: COMPANY_HEADERS.slice(8),
     values,
-    grandTotal: values.reduce((sum, value) => sum + value, 0),
-    merge: 'I:K',
+    totalLabel: '提成合计',
   };
 }
 
@@ -93,11 +92,11 @@ export function buildCompanyWorkbook(rows, month) {
     ['公司账本 - ' + month.replace('-', '年') + '月'],
     COMPANY_HEADERS,
     ...data.map(row => [row.date, row.brand, row.product, row.cost, row.quotaAmount, row.price, row.channel, row.account, row.quotaCommission, row.directCommission, row.recoveryCommission]),
-    ['', '', '', '', '', '', '', '提成项目', ...footer.labels],
-    ['', '', '', '', '', '', '', '总计', footer.grandTotal],
+    ['', '', '', '', '', '', '', '', ...footer.labels],
+    ['', '', '', '', '', '', '', footer.totalLabel, ...footer.values],
   ];
   return createXlsx('公司账本', body, {
-    mergeRanges: [`A1:K1`, `I${body.length}:K${body.length}`],
+    mergeRanges: [`A1:K1`],
     widths: [14, 16, 24, 12, 18, 12, 12, 28, 16, 20, 16],
     titleRow: 1,
     headerRow: 2,
@@ -173,7 +172,6 @@ function buildSheetXml(rows, options) {
     const isHeader = excelRow === options.headerRow || excelRow === options.footerHeaderRow;
     const isFooterTotal = excelRow === options.footerTotalRow;
     const cells = row.map((value, columnIndex) => {
-      if (isFooterTotal && columnIndex === 9) return '';
       const ref = `${columnName(columnIndex + 1)}${excelRow}`;
       const style = isTitle ? 3 : isHeader ? 2 : isFooterTotal ? 4 : 0;
       return xmlCell(ref, value, style, options.numberColumns?.includes(columnIndex + 1));

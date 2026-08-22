@@ -169,9 +169,15 @@ body {
 .section__header { display: flex; align-items: center; justify-content: space-between; margin: 18px 0 12px; }
 .section__title { font-family: var(--font-serif); font-size: 1rem; font-weight: 600; }
 .monthly-export { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.monthly-export input[type="month"] { height: 32px; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0 8px; font-size: 0.8rem; background: var(--surface); color: var(--text); }
 .monthly-export__button { height: 32px; border: 1px solid var(--gold); border-radius: var(--radius-sm); padding: 0 12px; background: var(--gold); color: #fff; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
 .monthly-export__button:disabled { opacity: 0.55; cursor: wait; }
+.report-modal__fields { display: grid; gap: 14px; margin: 18px 0; }
+.report-modal__label { display: grid; gap: 6px; color: var(--text-2); font-size: 0.8rem; font-weight: 600; }
+.report-modal__input { height: 42px; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0 10px; background: var(--surface); color: var(--text); font: inherit; }
+.report-modal__actions { display: flex; gap: 10px; }
+.report-modal__actions button { flex: 1; height: 42px; border-radius: var(--radius-sm); font: inherit; font-weight: 600; cursor: pointer; }
+.report-modal__cancel { border: 1px solid var(--border); background: var(--surface-2); color: var(--text-2); }
+.report-modal__submit { border: 1px solid var(--gold); background: var(--gold); color: #fff; }
 
 /* ═══ TXN LIST ═══ */
 .txn-item {
@@ -1062,12 +1068,33 @@ body {
           <div class="section__title">月度统计</div>
           <div class="monthly-export">
             <select id="yearFilter" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:0.8rem;background:var(--surface);color:var(--text);"></select>
-            <input id="reportMonth" type="month" aria-label="导出月份">
             <button id="exportReports" class="monthly-export__button" type="button">导出报表</button>
           </div>
         </div>
       </div>
-      <div id="monthlyList"></div>
+    <div id="monthlyList"></div>
+    </div>
+
+    <div class="modal-overlay" id="reportModalOverlay" aria-hidden="true">
+      <div class="modal" id="reportModal" role="dialog" aria-modal="true" aria-labelledby="reportModalTitle">
+        <div class="modal__handle"></div>
+        <div class="modal__title" id="reportModalTitle">导出报表</div>
+        <div class="report-modal__fields">
+          <label class="report-modal__label" for="reportMonth">月份
+            <input class="report-modal__input" id="reportMonth" type="month">
+          </label>
+          <label class="report-modal__label" for="reportLedger">性质
+            <select class="report-modal__input" id="reportLedger">
+              <option value="company">公司</option>
+              <option value="personal">个人</option>
+            </select>
+          </label>
+        </div>
+        <div class="report-modal__actions">
+          <button class="report-modal__cancel" id="reportCancel" type="button">取消</button>
+          <button class="report-modal__submit" id="reportDownload" type="button">下载报表</button>
+        </div>
+      </div>
     </div>
 
     <!-- AI助手视图 -->

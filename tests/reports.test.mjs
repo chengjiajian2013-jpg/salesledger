@@ -23,12 +23,12 @@ test('company report blanks cost and sale price for quota transactions', () => {
   assert.equal(quota.quotaCommission, 700);
 });
 
-test('company footer exposes three commission labels and one merged grand total', () => {
+test('company footer keeps the commission total label and sums each commission column', () => {
   const footer = buildCompanyFooter([1200, 300, 500]);
 
   assert.deepEqual(footer.labels, ['换货提成 2%', '直款提成（利润 10%）', '直客回收 40%']);
-  assert.equal(footer.grandTotal, 2000);
-  assert.equal(footer.merge, 'I:K');
+  assert.deepEqual(footer.values, [1200, 300, 500]);
+  assert.equal(footer.totalLabel, '提成合计');
 });
 
 test('personal report keeps the simple nine-column shape', () => {
@@ -48,7 +48,7 @@ test('report month validation returns inclusive month boundaries', () => {
   assert.throws(() => getReportPeriod('2028-2'), /YYYY-MM/);
 });
 
-test('company workbook contains UTF-8 labels and merged grand total row', () => {
+test('company workbook contains UTF-8 labels and per-column commission totals', () => {
   const bytes = buildReportWorkbook('company', [{
     date: '2026-08-01', brand: 'LV', product: 'Speedy', channel: 'quota',
     cost: 1000, price: 2000, commission_rate: 0.02, account: '',
@@ -57,8 +57,9 @@ test('company workbook contains UTF-8 labels and merged grand total row', () => 
   const sheet = strFromU8(files['xl/worksheets/sheet1.xml']);
 
   assert.match(sheet, /售出日期/);
-  assert.match(sheet, /mergeCell ref="I5:K5"/);
-  assert.match(sheet, /总计/);
+  assert.doesNotMatch(sheet, /mergeCell ref="I5:K5"/);
+  assert.match(sheet, /提成合计/);
+  assert.match(sheet, /<c r="I5"[^>]*><v>40<\/v>/);
   assert.doesNotMatch(sheet, /2026-08-01.*1000.*2000/);
 });
 
@@ -107,7 +108,9 @@ test('monthly statistics exposes the report controls and protected route', async
     readFile(new URL('../public/modules/api.js', import.meta.url), 'utf8'),
     readFile(new URL('../src/worker.js', import.meta.url), 'utf8'),
   ]);
+  assert.match(html, /id="reportModalOverlay"/);
   assert.match(html, /id="reportMonth"/);
+  assert.match(html, /id="reportLedger"/);
   assert.match(html, /id="exportReports"/);
   assert.match(api, /downloadReport/);
   assert.match(worker, /\/api\/v1\/reports\/export/);

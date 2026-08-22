@@ -1,9 +1,9 @@
-# SalesLedger — API Contract
+# SalesLedger API Contract
 
-> **契约版本**: v1.0
-> **生效日期**: 2026-07-31
+> **契约版本**: v1.1
+> **生效日期**: 2026-08-20
 > **状态**: ACTIVE
-> **原则**: Contract First —— 本契约先于任何前端/后端实现，双方必须遵守。
+> **原则**: Contract First。实现、前端调用和运维验证以本文档为准。
 
 ---
 
@@ -17,344 +17,234 @@
 | 测试 | `https://salesledger-test.chengjiajian2013.workers.dev` |
 | 生产 | `https://salesledger.chengjiajian2013.workers.dev` |
 
-所有 API 路径以 `/api/v1` 为前缀。**v1 保证向后兼容**，破坏性变更只能发生在 v2。
+页面入口为 `/`（Joeyzou 记账本）和 `/fenghua`（风华记账直达地址）。API 路径统一以 `/api/v1` 为前缀。
 
-### 1.2 内容协商
+### 1.2 内容与数据格式
 
-- 请求/响应一律 `application/json; charset=utf-8`
-- 字符编码 UTF-8
-- 日期格式 ISO-8601: `YYYY-MM-DD`
-- 时间格式 ISO-8601: `YYYY-MM-DDTHH:mm:ssZ`
-- 金额：数字（浮点数），单位人民币元，**不**以"分"为单位
+- 请求/响应使用 JSON，字符集 UTF-8。
+- 日期使用 `YYYY-MM-DD`；风华月度查询使用 `YYYY-MM`。
+- 时间字段由服务端生成，使用 ISO-8601 字符串。
+- 金额单位为人民币元，使用数字而不是“分”；金额显示通常保留两位小数。
 
 ### 1.3 通用响应包装
 
-**成功响应 (2xx)**:
+成功响应：
+
 ```json
-{
-  "data": { ... },
-  "meta": { ... }
-}
+{ "data": { "...": "..." }, "meta": { "...": "..." } }
 ```
 
-**错误响应 (4xx/5xx)**:
-```json
-{
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Human readable message",
-    "details": [ ... ]
-  }
-}
-```
+错误响应：
 
-`meta` 字段仅在需要时出现（如分页、聚合统计），**不**在单个资源响应中强制。
-
-### 1.4 HTTP 语义
-
-| 状态码 | 含义 | 使用场景 |
-|--------|------|----------|
-| 200 | OK | GET 单个/列表、PATCH 更新 |
-| 201 | Created | POST 创建成功 |
-| 204 | No Content | DELETE 成功（无 body） |
-| 400 | Bad Request | 请求体 JSON 解析失败 |
-| 401 | Unauthorized | 未认证（V1 预留） |
-| 404 | Not Found | 资源不存在 |
-| 409 | Conflict | 业务冲突（如重复） |
-| 422 | Unprocessable Entity | **校验失败**（字段级错误） |
-| 429 | Too Many Requests | 限流 |
-| 500 | Internal Server Error | 服务器内部错误 |
-
-### 1.5 错误码体系
-
-| error.code | HTTP | 含义 |
-|------------|------|------|
-| `VALIDATION_ERROR` | 422 | 字段校验失败，`details` 包含字段错误 |
-| `RESOURCE_NOT_FOUND` | 404 | 资源不存在 |
-| `MALFORMED_JSON` | 400 | 请求体 JSON 非法 |
-| `INVALID_QUERY` | 400 | 查询参数非法 |
-| `INTERNAL_ERROR` | 500 | 服务器内部错误（不暴露细节） |
-
-**错误详情格式 (VALIDATION_ERROR)**:
 ```json
 {
   "error": {
     "code": "VALIDATION_ERROR",
     "message": "请求数据校验失败",
-    "details": [
-      { "field": "date", "code": "REQUIRED", "message": "日期不能为空" },
-      { "field": "price", code": "MIN_VALUE", "message": "售出价必须大于 0" }
-    ]
+    "details": [{ "field": "date", "code": "REQUIRED", "message": "日期不能为空" }]
   }
 }
 ```
 
+`meta` 只在分页或聚合响应中返回。
+
+### 1.4 HTTP 状态码
+
+| 状态码 | 使用场景 |
+|--------|----------|
+| 200 | GET 成功、PATCH 更新成功 |
+| 201 | POST 创建成功 |
+| 204 | DELETE 成功；删除接口保持幂等 |
+| 400 | JSON、查询参数或请求格式错误 |
+| 401 | 缺少、无效或过期的 Bearer Token；登录密码错误 |
+| 404 | 查询或更新的资源不存在 |
+| 409 | 自定义类目在同一收支类型下重复 |
+| 422 | 字段校验失败 |
+| 500 | 服务端内部错误 |
+
+### 1.5 错误码
+
+实现中使用的主要错误码：`UNAUTHORIZED`、`CONFIG_ERROR`、`MALFORMED_JSON`、`INVALID_JSON`、`INVALID_QUERY`、`VALIDATION_ERROR`、`CATEGORY_EXISTS`、`RESOURCE_NOT_FOUND`、`METHOD_NOT_ALLOWED`、`INTERNAL_ERROR`。
+
 ---
 
-## 2. 接口清单
+## 2. 认证
 
-### 2.1 `GET /api/v1/transactions` —— 列表查询
+### 2.1 登录
 
-**查询参数**:
+`POST /api/v1/auth/login` 无需认证。
 
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `startDate` | string (YYYY-MM-DD) | 否 | 开始日期（含） |
-| `endDate` | string (YYYY-MM-DD) | 否 | 结束日期（含） |
-| `channel` | string | 否 | 渠道过滤：`quota` / `recovery` / `direct` / `other` |
-| `keyword` | string | 否 | 商品名/备注模糊搜索 |
-| `page` | integer (≥1, default 1) | 否 | 页码 |
-| `pageSize` | integer (1-100, default 20) | 否 | 每页数量 |
-| `sortBy` | string (default `date`) | 否 | 排序字段：`date` / `price` / `profit` / `createdAt` |
-| `sortOrder` | string (default `desc`) | 否 | `asc` / `desc` |
+请求：
 
-**响应 200**:
 ```json
-{
-  "data": [
-    {
-      "id": 42,
-      "date": "2026-07-31",
-      "product": "Chanel 中号 CF 黑金",
-      "channel": "quota",
-      "cost": 28000.00,
-      "price": 35000.00,
-      "profit": 7000.00,
-      "note": "老客户，99新",
-      "createdAt": "2026-07-31T14:30:00Z",
-      "updatedAt": "2026-07-31T14:30:00Z"
-    }
-  ],
-  "meta": {
-    "pagination": {
-      "page": 1,
-      "pageSize": 20,
-      "totalItems": 156,
-      "totalPages": 8
-    }
-  }
-}
+{ "password": "<访问密钥>" }
 ```
 
-**错误**: `INVALID_QUERY` (400)
+成功响应：
 
----
-
-### 2.2 `POST /api/v1/transactions` —— 创建交易
-
-**请求体**:
 ```json
-{
-  "date": "2026-07-31",
-  "product": "Chanel 中号 CF 黑金",
-  "channel": "quota",
-  "cost": 28000.00,
-  "price": 35000.00,
-  "note": "老客户，99新"
-}
+{ "data": { "token": "<短期 Bearer Token>" } }
 ```
 
-**字段校验**:
+服务端使用 Cloudflare Secret `ACCESS_KEY` 校验密码，并签发有效期 12 小时的 HMAC-SHA-256 Token。测试和生产环境都通过 Secret 注入，访问密钥不写入代码、文档或 `[vars]`。
 
-| 字段 | 规则 |
-|------|------|
-| `date` | 必填，合法日期，不超过今天+7天 |
-| `product` | 必填，1-200 字符 |
-| `channel` | 必填，枚举 `quota` / `recovery` / `direct` / `other` |
-| `cost` | 必填，≥0，最多2位小数 |
-| `price` | 必填，>0，最多2位小数，必须 ≥ cost |
-| `note` | 选填，0-500 字符 |
+### 2.2 受保护请求
 
-**响应 201**:
-```json
-{
-  "data": { /* 创建后的完整对象，含 id */ }
-}
+除健康检查和登录外，所有 API 都必须带：
+
+```http
+Authorization: Bearer <token>
 ```
 
-**错误**: `VALIDATION_ERROR` (422), `MALFORMED_JSON` (400)
+前端把 Token 放在当前浏览器标签页的 `sessionStorage`（键名 `salesledger_token`）。401 时清除 Token 并重新显示登录流程；不使用第二套账号或密码。
 
-> **注意**: `profit` 由服务端计算（`price - cost`），客户端**不得**传此字段，传了则忽略。
+### 2.3 健康检查
 
----
+`GET /api/v1/health` 无需认证，响应：
 
-### 2.3 `GET /api/v1/transactions/:id` —— 单个查询
-
-**响应 200**: `{ "data": { ...单个交易... } }`
-
-**错误**: `RESOURCE_NOT_FOUND` (404)
-
----
-
-### 2.4 `PATCH /api/v1/transactions/:id` —— 部分更新
-
-**请求体**: 与 POST 相同，但**所有字段可选**。只更新提供的字段。
-
-**响应 200**: `{ "data": { ...更新后的完整对象... } }`
-
-**错误**: `RESOURCE_NOT_FOUND` (404), `VALIDATION_ERROR` (422)
-
-> **注意**: `profit` 服务端重算。
-
----
-
-### 2.5 `DELETE /api/v1/transactions/:id` —— 删除
-
-**响应 204**: 无 body
-
-**错误**: `RESOURCE_NOT_FOUND` (404)
-
-> **幂等性**: 删除不存在的资源返回 204（而非 404），符合幂等原则。**V1 为调试方便改为 404，V2 可调整。**
-
----
-
-### 2.6 `GET /api/v1/summary` —— 聚合统计
-
-**查询参数**:
-
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `startDate` | string | 是 | 开始日期 |
-| `endDate` | string | 是 | 结束日期 |
-
-**响应 200**:
-```json
-{
-  "data": {
-    "period": { "startDate": "2026-07-01", "endDate": "2026-07-31" },
-    "totalRevenue": 128000.00,
-    "totalCost": 96000.00,
-    "totalProfit": 32000.00,
-    "transactionCount": 12,
-    "averageProfit": 2666.67,
-    "byChannel": [
-      { "channel": "quota", "revenue": 80000, "profit": 20000, "count": 7 },
-      { "channel": "recovery", "revenue": 30000, "profit": 8000, "count": 3 },
-      { "channel": "direct", "revenue": 18000, "profit": 4000, "count": 2 }
-    ],
-    "daily": [
-      { "date": "2026-07-01", "revenue": 12000, "profit": 3000, "count": 1 }
-    ]
-  }
-}
-```
-
-**错误**: `INVALID_QUERY` (400) —— 日期缺失或格式错误
-
----
-
-### 2.7 `GET /api/v1/health` —— 健康检查
-
-**响应 200**:
 ```json
 { "data": { "status": "ok", "version": "1.0.0" } }
 ```
 
-无认证，用于前端启动时探测后端可达性。
-
 ---
 
-### 2.8 风华记账
+## 3. Joeyzou 交易 API
 
-所有接口沿用现有 Bearer Token 鉴权，数据存放于独立的 `fenghua_entries` 表。
+### 3.1 `GET /api/v1/transactions`
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/v1/fenghua/entries?month=YYYY-MM&page=1&pageSize=100` | 按月查询账目；单页最多 100 条；`meta.summary` 返回收入、支出和结余 |
-| POST | `/api/v1/fenghua/entries` | 新增账目 |
-| PATCH | `/api/v1/fenghua/entries/:id` | 部分更新账目 |
-| DELETE | `/api/v1/fenghua/entries/:id` | 删除账目 |
+支持分页、筛选和排序：
 
-新增或更新字段：`type` (`income` / `expense`)、`amount`（0.01–99,999,999 元，最多两位小数）、`category`、`date` (`YYYY-MM-DD`) 和可选 `note`。
+| 参数 | 说明 |
+|------|------|
+| `seller` | `company` 或 `personal` |
+| `startDate` / `endDate` | 日期范围（含边界） |
+| `channel` | `quota` / `direct` / `recovery` / `other` |
+| `keyword` | 商品名或备注模糊搜索 |
+| `page` | 正整数，默认 1 |
+| `pageSize` | 1-100，默认 20 |
+| `sortBy` | `date` / `price` / `profit` / `createdAt`，默认 `date` |
+| `sortOrder` | `asc` / `desc`，默认 `desc` |
 
-### 2.9 风华待办
+响应的 `data` 为交易数组，`meta.pagination` 包含 `page`、`pageSize`、`totalItems`、`totalPages`。
 
-待办存放于独立的 `fenghua_todos` 表，不包含优先级、重复规则或提醒。
+### 3.2 `POST /api/v1/transactions`
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/v1/fenghua/todos?page=1&pageSize=100` | 查询待办；单页最多 100 条 |
-| POST | `/api/v1/fenghua/todos` | 新增待办 |
-| PATCH | `/api/v1/fenghua/todos/:id` | 更新内容、截止日期或完成状态 |
-| DELETE | `/api/v1/fenghua/todos/:id` | 删除待办 |
+请求字段：
 
-字段：`content`（1–120 字符）、可选 `dueDate` (`YYYY-MM-DD`) 和 `isCompleted`（布尔值）。
-
----
-
-## 3. 鉴权（V1 预留）
-
-V1 为单用户模式，**不做真实鉴权**。但接口设计预留：
-
-- 请求头 `Authorization: Bearer <token>` —— V1 忽略，V2 启用
-- 响应头 `X-Request-Id` —— 所有响应返回，用于调试
-
----
-
-## 4. 限流与性能
-
-- V1 不做服务端限流（CF 自带基础防护）
-- 单次 list 请求最大 `pageSize=100`
-- summary 接口日期范围不超过 366 天
-
----
-
-## 5. 变更策略（One-Version Rule）
-
-**允许（向后兼容）**:
-- 新增可选请求字段
-- 新增响应字段（客户端忽略未知字段）
-- 新增端点
-- 新增 error.code
-
-**禁止（破坏性，必须升 v2）**:
-- 删除/重命名已有字段
-- 改变字段类型
-- 改变错误码含义
-- 改变必填/选填状态
-
----
-
-## 6. 前端消费约定
-
-### 6.1 错误处理模板
-
-```javascript
-async function apiRequest(path, options = {}) {
-  const res = await fetch(`/api/v1${path}`, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options,
-  });
-
-  if (res.status === 204) return null;
-
-  const body = await res.json();
-
-  if (!res.ok) {
-    // 统一抛出 APIError
-    const err = new Error(body.error?.message || '请求失败');
-    err.code = body.error?.code;
-    err.details = body.error?.details;
-    err.status = res.status;
-    throw err;
-  }
-
-  return body.data;
+```json
+{
+  "seller": "company",
+  "source": "苏苏",
+  "brand": "Chanel",
+  "date": "2026-08-20",
+  "product": "中号 CF 黑金",
+  "channel": "quota",
+  "cost": 28000,
+  "price": 35000,
+  "commission_rate": 0.1,
+  "profit": 700,
+  "account": "微信",
+  "note": "老客户，99新"
 }
 ```
 
-### 6.2 客户端校验
+`seller`、`date`、`product`、`channel`、`commission_rate`、`profit` 必须提供。`source`、`brand`、`account`、`note` 可选，长度限制分别为 50、50、500、500 字符；成本和售价可选但不能为负，售价上限为 9,999,999。利润由当前交易规则和前端预览计算后提交，服务端持久化该字段。
 
-**客户端校验仅用于 UX**（即时反馈、减少请求），**不作为安全边界**。所有业务校验以服务端为准。
+### 3.3 `GET /api/v1/transactions/:id`
 
-### 6.3 状态码处理
+返回单笔交易；不存在返回 404 `RESOURCE_NOT_FOUND`。
 
-| 状态码 | 前端行为 |
-|--------|----------|
-| 422 | 遍历 `error.details`，在对应字段下显示错误 |
-| 404 | 资源不存在 → Toast + 刷新列表 |
-| 500 | 通用错误 Toast，不暴露细节 |
-| 网络失败 | "网络异常，请检查连接" |
+### 3.4 `PATCH /api/v1/transactions/:id`
+
+部分更新交易。请求体字段均可选，只更新提供的字段；不存在返回 404。客户端应使用 `PATCH`，不使用旧的 `PUT` 语义。
+
+### 3.5 `DELETE /api/v1/transactions/:id`
+
+删除交易并返回 204。删除操作为物理删除。
+
+### 3.6 `GET /api/v1/summary`
+
+必填查询参数 `startDate`、`endDate`，范围不能超过 366 天；可选 `seller`。
+
+响应包含：
+
+```json
+{
+  "data": {
+    "period": { "startDate": "2026-08-01", "endDate": "2026-08-31" },
+    "filter": { "seller": "all" },
+    "totalRevenue": 35000,
+    "totalCost": 28000,
+    "totalProfit": 700,
+    "transactionCount": 1,
+    "averageProfit": 700,
+    "byChannel": [{ "channel": "quota", "profit": 700, "count": 1 }],
+    "daily": [{ "date": "2026-08-20", "profit": 700, "count": 1 }]
+  }
+}
+```
+
+### 3.7 `GET /api/v1/reports/export`
+
+导出 Joeyzou 交易报表，不读取或混入风华记账数据。`month` 和 `ledger` 必填：
+
+| 参数 | 说明 |
+|------|------|
+| `month` | `YYYY-MM`，按月份查询，包含该月首尾日期 |
+| `ledger` | `company` 或 `personal` |
+
+接口直接返回 `.xlsx` 文件。公司账本和个人账本按弹窗中选择的性质分别下载；文件名为 `公司账本-YYYY-MM.xlsx` 或 `个人账本-YYYY-MM.xlsx`。公司报表的换货记录将成本和售出价留空，底部保留“提成合计”，并在 I/J/K 三列分别显示换货、直款、直客回收合计；个人报表使用简洁字段表。无记录月份仍返回带表头的空文件。
+
+---
+
+## 4. 风华记账 API
+
+风华是普通个人收支工具，不涉及 Joeyzou 交易字段。账目、待办和自定义类目分别写入 `fenghua_entries`、`fenghua_todos`、`fenghua_categories`，三者都与 `transactions` 隔离。
+
+### 4.1 账目
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/v1/fenghua/entries?month=YYYY-MM&page=1&pageSize=100` | 查询指定月份，单页最多 100 条 |
+| POST | `/api/v1/fenghua/entries` | 新增账目 |
+| PATCH | `/api/v1/fenghua/entries/:id` | 部分更新账目 |
+| DELETE | `/api/v1/fenghua/entries/:id` | 删除账目，返回 204 |
+
+字段：`type` 为 `income`/`expense`；`amount` 为 0.01-99,999,999 元、最多两位小数；`category` 为内置分类或合法的 `custom:<id>`；`date` 为有效日期；`note` 可选且不超过 200 字符。列表响应的 `meta.summary` 返回 `income`、`expense`、`balance`，并带分页信息。
+
+### 4.2 自定义类目
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/v1/fenghua/categories?type=expense` | 按 `income` 或 `expense` 查询；不传则返回全部 |
+| POST | `/api/v1/fenghua/categories` | 创建自定义类目 |
+
+创建请求：`{ "type": "expense", "name": "宠物" }`。成功后服务端生成稳定 key `custom:<id>`；同一收支类型下名称不区分大小写去重。自定义收入类目不能用于支出账目，反之亦然。
+
+### 4.3 待办
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/v1/fenghua/todos?page=1&pageSize=100` | 查询待办，单页最多 100 条 |
+| POST | `/api/v1/fenghua/todos` | 新增待办 |
+| PATCH | `/api/v1/fenghua/todos/:id` | 更新内容、截止日期或完成状态 |
+| DELETE | `/api/v1/fenghua/todos/:id` | 删除待办，返回 204 |
+
+字段：`content` 为 1-120 字符；`dueDate` 可为空且必须是有效日期；`isCompleted` 为布尔值。待办不包含优先级、重复规则或提醒。
+
+---
+
+## 5. 前端消费约定
+
+`public/modules/api.js` 统一加入 `Content-Type` 和当前 `sessionStorage` 中的 Bearer Token；204 直接返回 `null`；401 清除 Token 并触发重新登录；其他错误转为带 `code`、`details`、`status` 的 Error。
+
+客户端校验只用于即时反馈，服务端校验才是安全边界。422 应按 `error.details` 显示字段错误，404 刷新列表，500 不向用户暴露内部细节。
+
+---
+
+## 6. 变更策略
+
+允许新增可选字段、响应字段、端点和错误码；删除或重命名字段、改变字段类型或必填性时必须升级 API 版本。
 
 ---
 
@@ -362,4 +252,5 @@ async function apiRequest(path, options = {}) {
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
-| v1.0 | 2026-07-31 | 初始版本 |
+| v1.1 | 2026-08-20 | 补充 Bearer Token、风华账本/待办、统计报表和自定义类目契约 |
+| v1.0 | 2026-07-31 | 初始交易 API 契约 |
