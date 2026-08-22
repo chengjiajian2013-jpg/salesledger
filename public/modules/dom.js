@@ -36,6 +36,8 @@ export function collectDom(root) {
     nextPage: $('#nextPage'),
     pageInfo: $('#pageInfo'),
     yearFilter: $('#yearFilter'),
+    reportMonth: $('#reportMonth'),
+    exportReports: $('#exportReports'),
     monthlyList: $('#monthlyList'),
     fab: $('#fab'),
     modalOverlay: $('#modalOverlay'),

@@ -9,6 +9,7 @@ import { handleAIChat } from './ai.js';
 import { handleFenghuaEntries, handleFenghuaEntry } from './fenghua.js';
 import { handleFenghuaCategories } from './fenghuaCategories.js';
 import { handleFenghuaTodos, handleFenghuaTodo } from './todos.js';
+import { handleReportExport } from './reports.js';
 import {
   handleGetChats,
   handleCreateChat,
@@ -108,6 +109,8 @@ export default {
             response = await handleTransactionItem(request, env, id);
           } else if (path === '/api/v1/summary' && method === 'GET') {
             response = await handleSummary(request, env);
+          } else if (path === '/api/v1/reports/export' && method === 'GET') {
+            response = await handleReportExport(request, env);
           } else if (path === '/api/v1/options' && method === 'GET') {
             response = await handleOptions(env);
           } else if (path === '/api/v1/fenghua/entries' && ['GET', 'POST'].includes(method)) {

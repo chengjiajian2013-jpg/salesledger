@@ -168,6 +168,10 @@ body {
 /* ═══ SECTION ═══ */
 .section__header { display: flex; align-items: center; justify-content: space-between; margin: 18px 0 12px; }
 .section__title { font-family: var(--font-serif); font-size: 1rem; font-weight: 600; }
+.monthly-export { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.monthly-export input[type="month"] { height: 32px; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0 8px; font-size: 0.8rem; background: var(--surface); color: var(--text); }
+.monthly-export__button { height: 32px; border: 1px solid var(--gold); border-radius: var(--radius-sm); padding: 0 12px; background: var(--gold); color: #fff; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+.monthly-export__button:disabled { opacity: 0.55; cursor: wait; }
 
 /* ═══ TXN LIST ═══ */
 .txn-item {
@@ -1056,7 +1060,11 @@ body {
       <div class="section">
         <div class="section__header">
           <div class="section__title">月度统计</div>
-          <select id="yearFilter" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:0.8rem;background:var(--surface);color:var(--text);"></select>
+          <div class="monthly-export">
+            <select id="yearFilter" style="height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-size:0.8rem;background:var(--surface);color:var(--text);"></select>
+            <input id="reportMonth" type="month" aria-label="导出月份">
+            <button id="exportReports" class="monthly-export__button" type="button">导出报表</button>
+          </div>
         </div>
       </div>
       <div id="monthlyList"></div>

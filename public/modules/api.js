@@ -73,6 +73,52 @@ async function request(path, { method = 'GET', body, params } = {}) {
   }
 }
 
+async function downloadReport(params) {
+  const url = new URL(BASE + '/reports/export', location.origin);
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value != null && value !== '') url.searchParams.set(key, String(value));
+  });
+  const headers = {};
+  const token = getToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+  showLoading();
+  try {
+    const res = await fetch(url, { headers });
+    if (!res.ok) {
+      if (res.status === 401) {
+        clearToken();
+        window.location.reload();
+        return;
+      }
+      let error = null;
+      try { error = await res.json(); } catch { /* keep generic error */ }
+      const err = new Error(error?.error?.message || `HTTP ${res.status}`);
+      err.code = error?.error?.code;
+      err.status = res.status;
+      throw err;
+    }
+    const blob = await res.blob();
+    const disposition = res.headers.get('Content-Disposition') || '';
+    const utf8Name = disposition.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
+    const encodedName = disposition.match(/filename="([^"]+)"/i)?.[1];
+    let filename = `${params?.ledger === 'personal' ? '个人账本' : '公司账本'}-${params?.month || ''}.xlsx`;
+    if (utf8Name) {
+      try { filename = decodeURIComponent(utf8Name); } catch { /* use the safe default */ }
+    } else if (encodedName) {
+      filename = encodedName;
+    }
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = objectUrl;
+    anchor.download = filename;
+    anchor.click();
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    return filename;
+  } finally {
+    hideLoading();
+  }
+}
+
 export async function collectPaginated(fetchPage, params = {}) {
   const pageSize = 100;
   const baseParams = { ...params };
@@ -98,6 +144,7 @@ export const api = {
   updateTransaction: (id, body) => request(`/transactions/${id}`, { method: 'PATCH', body }),
   deleteTransaction: (id) => request(`/transactions/${id}`, { method: 'DELETE' }),
   getSummary: (params) => request('/summary', { params }),
+  downloadReport,
   parse: (body) => request('/parse', { method: 'POST', body }),
   getOptions: () => request('/options'),
   listFenghuaEntries: (params) => collectPaginated(

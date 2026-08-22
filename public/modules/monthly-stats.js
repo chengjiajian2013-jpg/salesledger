@@ -17,7 +17,34 @@ export function buildMonthRanges(year) {
 }
 
 export function createMonthlyStatsController({ api, dom, formatCurrency, showToast, onMonthSelected }) {
+  function previousMonth(now = new Date()) {
+    const date = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+  }
+
+  function bindReportExport() {
+    if (!dom.exportReports || dom.exportReports.dataset?.bound === 'true') return;
+    if (dom.reportMonth && !dom.reportMonth.value) dom.reportMonth.value = previousMonth();
+    dom.exportReports.dataset.bound = 'true';
+    dom.exportReports.addEventListener('click', async () => {
+      const month = dom.reportMonth?.value || previousMonth();
+      dom.exportReports.disabled = true;
+      try {
+        await api.downloadReport({ month, ledger: 'company' });
+        await new Promise(resolve => setTimeout(resolve, 250));
+        await api.downloadReport({ month, ledger: 'personal' });
+        showToast('公司和个人报表已导出');
+      } catch (error) {
+        console.error('[ReportExport]', error);
+        showToast(error.message || '报表导出失败', 'error');
+      } finally {
+        dom.exportReports.disabled = false;
+      }
+    });
+  }
+
   async function loadMonthlyStats() {
+    bindReportExport();
     const year = dom.yearFilter.value || new Date().getFullYear();
     const months = buildMonthRanges(Number(year));
 
