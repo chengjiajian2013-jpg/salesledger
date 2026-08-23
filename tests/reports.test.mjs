@@ -65,6 +65,20 @@ test('company workbook contains UTF-8 labels and per-column commission totals', 
   assert.doesNotMatch(sheet, /2026-08-01.*1000.*2000/);
 });
 
+test('company workbook wraps long model text in the model column', () => {
+  const bytes = buildReportWorkbook('company', [{
+    date: '2026-08-01', brand: 'Chanel',
+    product: '超长型号名称用于验证导出后可以在型号列内自动换行显示',
+    channel: 'direct', cost: 1000, price: 2000, commission_rate: 0.1, account: '',
+  }], '2026-08');
+  const files = unzipSync(bytes);
+  const sheet = strFromU8(files['xl/worksheets/sheet1.xml']);
+  const styles = strFromU8(files['xl/styles.xml']);
+
+  assert.match(sheet, /<c r="C3"[^>]*s="5"/);
+  assert.match(styles, /<xf numFmtId="0" fontId="0" fillId="0" borderId="0"><alignment wrapText="1" vertical="top"\/><\/xf>/);
+});
+
 test('report export queries one ledger for the requested month and returns an xlsx', async () => {
   let query;
   let bindings;

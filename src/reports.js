@@ -101,6 +101,7 @@ export function buildCompanyWorkbook(rows, month) {
     headerRow: 2,
     footerTotalRow: body.length,
     numberColumns: [4, 5, 6, 9, 10, 11],
+    wrapTextColumns: [3],
   });
 }
 
@@ -171,7 +172,8 @@ function buildSheetXml(rows, options) {
     const isFooterTotal = excelRow === options.footerTotalRow;
     const cells = row.map((value, columnIndex) => {
       const ref = `${columnName(columnIndex + 1)}${excelRow}`;
-      const style = isTitle ? 3 : isHeader ? 2 : isFooterTotal ? 4 : 0;
+      const wrapsText = options.wrapTextColumns?.includes(columnIndex + 1);
+      const style = isTitle ? 3 : isHeader ? (wrapsText ? 6 : 2) : isFooterTotal ? 4 : (wrapsText ? 5 : 0);
       return xmlCell(ref, value, style, options.numberColumns?.includes(columnIndex + 1));
     }).join('');
     return `<row r="${excelRow}">${cells}</row>`;
@@ -230,5 +232,5 @@ function workbookRelsXml() {
 }
 
 function stylesXml() {
-  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="4" formatCode="0"/></numFmts><fonts count="3"><font><sz val="10"/><name val="Microsoft YaHei"/></font><font><b/><sz val="10"/><name val="Microsoft YaHei"/></font><font><b/><sz val="14"/><name val="Microsoft YaHei"/></font></fonts><fills count="4"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFF3F0E8"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFE7C46A"/></patternFill></fill></fills><borders count="2"><border/><border><left style="thin"/><right style="thin"/><top style="thin"/><bottom style="thin"/></border></borders><cellXfs count="5"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/><xf numFmtId="4" fontId="0" fillId="0" borderId="1" applyNumberFormat="1"/><xf numFmtId="0" fontId="1" fillId="2" borderId="1"/><xf numFmtId="0" fontId="2" fillId="3" borderId="0"/><xf numFmtId="4" fontId="1" fillId="2" borderId="1" applyNumberFormat="1"/></cellXfs></styleSheet>';
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="4" formatCode="0"/></numFmts><fonts count="3"><font><sz val="10"/><name val="Microsoft YaHei"/></font><font><b/><sz val="10"/><name val="Microsoft YaHei"/></font><font><b/><sz val="14"/><name val="Microsoft YaHei"/></font></fonts><fills count="4"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFF3F0E8"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFE7C46A"/></patternFill></fill></fills><borders count="2"><border/><border><left style="thin"/><right style="thin"/><top style="thin"/><bottom style="thin"/></border></borders><cellXfs count="7"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/><xf numFmtId="4" fontId="0" fillId="0" borderId="1" applyNumberFormat="1"/><xf numFmtId="0" fontId="1" fillId="2" borderId="1"/><xf numFmtId="0" fontId="2" fillId="3" borderId="0"/><xf numFmtId="4" fontId="1" fillId="2" borderId="1" applyNumberFormat="1"/><xf numFmtId="0" fontId="0" fillId="0" borderId="0"><alignment wrapText="1" vertical="top"/></xf><xf numFmtId="0" fontId="1" fillId="2" borderId="1"><alignment wrapText="1" vertical="top"/></xf></cellXfs></styleSheet>';
 }
