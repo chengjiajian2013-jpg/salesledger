@@ -20,6 +20,7 @@ import {
   handleSaveFormData,
   handleGetFormData,
 } from './aiChats.js';
+import { handleGetZiweiUsers, handleGetDailyFortune, handleGetFullChart } from './ziwei.js';
 import { SCHEMA_STATEMENTS } from './schema.js';
 
 // 单例：确保只初始化一次
@@ -57,6 +58,7 @@ async function serveAssets(request, env) {
     return Response.redirect(url.toString(), 308);
   }
   if (pathname === '/fenghua') pathname = '/index.html';
+  if (pathname === '/ziwei') pathname = '/ziwei.html';
 
   // ASSETS.fetch 接受路径字符串或 Request
   try {
@@ -149,6 +151,14 @@ export default {
           } else if (path.match(/^\/api\/v1\/ai\/chats\/[^\/]+\/form-data$/) && method === 'GET') {
             const chatId = path.split('/')[5];
             response = await handleGetFormData(request, env, chatId);
+          } else if (path === '/api/v1/ziwei/users' && method === 'GET') {
+            response = await handleGetZiweiUsers();
+          } else if (path.match(/^\/api\/v1\/ziwei\/daily\/[^\/]+$/) && method === 'GET') {
+            const userId = path.split('/').pop();
+            response = await handleGetDailyFortune(request, env, userId);
+          } else if (path.match(/^\/api\/v1\/ziwei\/chart\/[^\/]+$/) && method === 'GET') {
+            const userId = path.split('/').pop();
+            response = await handleGetFullChart(request, env, userId);
           } else {
             response = jsonError('RESOURCE_NOT_FOUND', '接口不存在: ' + path, 404);
           }
